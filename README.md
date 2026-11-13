@@ -17,9 +17,9 @@ Student URL after GitHub Pages is enabled: **https://saahdavid.github.io/stat233
 | 7. Confidence Intervals | Proportion CI; t* lookup; mean CI; estimate/margin; n for p; n for μ; confidence interpretation; margin changes | Repeated confidence intervals |
 | 8. Hypothesis Testing + Uses & Abuses | Hypotheses; proportion z test; mean t test/table p brackets; tails; decision/conclusion; Type I/II; power/β; CI decisions/practical significance | p-value under H₀; Type I error and power |
 
-Each module contains explanations, highlighted formulas, worked examples, common mistakes, TI-84 checks, Excel formulas, a table of contents, previous/next links, original lecture PDFs, and practice. The normal and t tables have lookup helpers; the reference page also contains a formula sheet.
+Each module contains explanations, highlighted formulas, worked examples, common mistakes, TI-84 checks, Excel formulas, a table of contents, previous/next links, and practice. The normal and t tables have lookup helpers; the reference page also contains a formula sheet.
 
-The source material is the eight supplied filled lecture PDFs. Examples include shark attacks, pesticides in foods, car weight/MPG, soybean experiments, diabetes complications, dragonfly wingspans, the Boston pizzeria, Verve, facial ratios, nurses’ diets, therapeutic touch, and river oxygen. The site expands the hand arithmetic and clarifies several mathematical details rather than copying incidental slide errors. In particular, it distinguishes exact software t values from the course’s smaller-df table values and explains the limits of proportion CI/test equivalence.
+The source material is the instructor's eight filled lecture notes (not included in this repository). Examples include shark attacks, pesticides in foods, car weight/MPG, soybean experiments, diabetes complications, dragonfly wingspans, the Boston pizzeria, Verve, facial ratios, nurses’ diets, therapeutic touch, and river oxygen. The site expands the hand arithmetic and clarifies several mathematical details rather than copying incidental slide errors. In particular, it distinguishes exact software t values from the course’s smaller-df table values and explains the limits of proportion CI/test equivalence.
 
 ## Practice and saved mastery
 
@@ -64,7 +64,7 @@ The finished HTML pages are already committed. GitHub Pages can serve them uncha
 ### Browser upload
 
 1. Create a public GitHub repository (this project uses `saahdavid/stat2331`). If it already exists, open it.
-2. Unzip the delivery archive. Upload its **contents**, not the enclosing folder, using **Add file → Upload files**. Include `index.html`, all module pages, `assets/`, the PDFs, and `.nojekyll`. Commit the files.
+2. Unzip the delivery archive. Upload its **contents**, not the enclosing folder, using **Add file → Upload files**. Include `index.html`, all module pages, `assets/`, and `.nojekyll`. Commit the files.
 3. Open **Settings → Pages**.
 4. Under **Build and deployment**, select **Deploy from a branch**.
 5. Choose **main** and **/(root)**, then **Save**.
