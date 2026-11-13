@@ -29,7 +29,7 @@ try{
   await page.goto(`${base}/practice.html?module=6`,{waitUntil:'networkidle'});await page.locator('.skill-select').selectOption('m6-xbarprob');await page.getByRole('button',{name:'Show the worked solution',exact:true}).click();await page.locator('.question').screenshot({path:'test-results/worked-solution-phone.png'});
   assert.deepEqual(errors,[]);console.log('PASS: visual captures of populated labs and worked solution, at both widths and themes.');await browser.close();process.exit(0);
  }
- const routes=['index.html',...Array.from({length:8},(_,i)=>`module-${i+1}.html`),'practice.html','labs.html','tables.html'];
+ const routes=['index.html',...Array.from({length:8},(_,i)=>`module-${i+1}.html`),'practice.html','exams.html','labs.html','tables.html'];
  for(const route of routes){await page.goto(`${base}/${route}`,{waitUntil:'networkidle'});await page.waitForFunction(()=>!!window.Course);await page.waitForFunction(()=>window.katex!==undefined);await page.evaluate(()=>Course.renderMath());assert.equal(await page.locator('.math-error').count(),0,route);assert.equal(await page.locator('.math:not([data-rendered])').count(),0,route);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,route+' overflow');console.log('Page:',route);}
  // Stress every generator inside the real browser too.
  const count=await page.evaluate(()=>{let count=0;for(const skills of Object.values(Course.questions))for(const s of skills)for(let i=0;i<300;i++){const q=s.generate();if(/undefined|NaN|Infinity/.test(JSON.stringify(q)))throw Error(s.id);if(q.multi){for(const p of q.parts)if(p.type==='choice'?!(p.answer>=0&&p.answer<p.options.length):!Number.isFinite(p.answer))throw Error(s.id);}else if(q.choices?!q.choices.includes(q.answer):!Number.isFinite(q.answer))throw Error(s.id);count++;}return count;});
@@ -56,6 +56,38 @@ try{
  await page.getByRole('button',{name:'Start mixed set · 6 questions',exact:true}).click();
  await page.getByRole('button',{name:'Show the worked solution',exact:true}).click();assert.equal(await page.evaluate(()=>Course.practiceInstances[0].queue.length),6);await page.locator('[data-action=next]').click();
  for(let i=0;i<6;i++){await fill(page,true);await page.getByRole('button',{name:'Check my answer',exact:true}).click();await page.locator('[data-action=next]').click();}assert.ok((await page.locator('.feedback').innerText()).includes('Mixed set complete'));
+
+ // Practice exams: every quiz and the final, answered fully right and fully wrong through the page.
+ const fillExam=async correct=>{await page.evaluate(ok=>{const st=Course.exams.state;st.items.forEach((it,i)=>{const li=document.querySelector(`#exam-q-${i}`);
+   if(it.kind==='mc'){const k=it.q.shown.findIndex(o=>ok?o.tier===4:o.tier===0);const k2=k<0?it.q.shown.findIndex(o=>o.tier!==4):k;li.querySelectorAll('input')[k2].click();return;}
+   it.q.parts.forEach((p,k)=>{const el=li.querySelector(`.part[data-k="${k}"]`);if(p.type==='choice')el.querySelectorAll('input')[ok?p.answer:(p.answer+1)%p.options.length].click();else{const inp=el.querySelector('input');inp.value=String(ok?p.answer:p.answer+1000);inp.dispatchEvent(new Event('input',{bubbles:true}));}});
+   const ta=li.querySelector('textarea');ta.value='My written answer.';ta.dispatchEvent(new Event('input',{bubbles:true}));});},correct);};
+ const exams=['final',...Array.from({length:8},(_,i)=>`m${i+1}`)];let examRuns=0;
+ for(const id of exams)for(let rep=0;rep<(id==='final'?4:2);rep++){
+  await page.goto(`${base}/exams.html`,{waitUntil:'networkidle'});
+  await page.locator(`[data-start="${id}"]`).click();
+  assert.equal(await page.locator('.math-error').count(),0,`${id} exam math`);
+  const n=await page.locator('.exam-item').count();assert.equal(n,id==='final'?29:10);
+  await fillExam(rep===0);
+  assert.match(await page.locator('.exam-progress').innerText(),new RegExp(`${n} of ${n} answered`));
+  await page.locator('.exam-bar [data-action=submit]').click();
+  const max=id==='final'?136:48,frs=id==='final'?5:2;
+  const head=await page.locator('.exam-total').innerText();
+  if(rep===0){assert.equal(head,`${max-4*frs} / ${max} points (${Math.round(100*(max-4*frs)/max)}%)`,`${id} correct auto score`);
+   for(const b of await page.locator('.exam-self button[data-v="4"]').all())await b.click();
+   assert.equal(await page.locator('.exam-total').innerText(),`${max} / ${max} points (100%)`);}
+  else{const pts=Number(head.split(' / ')[0]);assert.ok(pts<=max/4,`${id} wrong answers score low (${head})`);}
+  assert.equal(await page.locator('.math-error').count(),0,`${id} review math`);examRuns++;}
+ // Unanswered questions trigger the in-page confirmation, and leaving keeps nothing.
+ await page.goto(`${base}/exams.html`,{waitUntil:'networkidle'});await page.locator('[data-start="m3"]').click();
+ await page.locator('.exam-bar [data-action=submit]').click();assert.ok(await page.locator('.exam-confirm').isVisible());
+ await page.locator('[data-action=confirm]').click();assert.match(await page.locator('.exam-total').innerText(),/^0 \/ 48/);
+ const hist=await page.evaluate(()=>JSON.parse(localStorage.getItem('stat2331-exams-v1')).attempts.length);assert.ok(hist>=examRuns+1);
+ // A timed exam submits itself at zero.
+ await page.locator('[data-action=menu]').click();await page.locator('#exam-timed').check();await page.locator('[data-start="m1"]').click();
+ assert.ok(await page.locator('.exam-timer').isVisible());await page.evaluate(()=>{Course.exams.state.deadline=Date.now()-1;});
+ await page.waitForSelector('.exam-timeup',{timeout:5000});
+ console.log(`PASS: ${examRuns} practice exams taken right and wrong; partial-credit scoring, self-grading, confirmation, timer, history.`);
  console.log('PASS: mastery persistence, percentage input, and mixed-set miss requeue.');
  await page.goto(`${base}/labs.html`,{waitUntil:'networkidle'});assert.equal(await page.locator('.lab').count(),10);
  for(let i=0;i<10;i++){
@@ -79,7 +111,7 @@ try{
  // Visual artifacts at both widths and themes.
  for(const width of [1440,390])for(const theme of ['light','dark']){
   await page.setViewportSize({width,height:1000});await page.evaluate(t=>localStorage.setItem('stat2331-theme',JSON.stringify(t)),theme);
-  for(const route of ['index.html','module-6.html','labs.html','tables.html']){
+  for(const route of ['index.html','module-6.html','exams.html','labs.html','tables.html']){
    await page.goto(`${base}/${route}`,{waitUntil:'networkidle'});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,`${route} overflow at ${width} ${theme}`);
    await page.screenshot({path:`test-results/${route.replace('.html','')}-${width}-${theme}.png`,fullPage:route==='index.html'});
   }

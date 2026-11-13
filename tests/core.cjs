@@ -34,3 +34,20 @@ for(const [input,value] of [['11/200',.055],['0.48*0.52',.2496],['sqrt(0.25/100)
 for(const input of ['alert(1)','globalThis','1/0','sqrt(-1)','2;3','2**3','constructor()','1e999'])assert.throws(()=>S.parse(input),undefined,input);
 for(let i=0;i<=100;i++){const z=-5+i*.1;assert.ok(Math.abs(S.normalCDF(z)+S.normalCDF(-z)-1)<1e-12);}
 console.log(`PASS: ${generated.toLocaleString()} single-answer and ${steps.toLocaleString()} multi-step questions (${styles} multi-step styles) across 64 skills; parser, quartiles, conventions, and numerical smoke checks.`);
+
+// Practice-exam bank: every multiple-choice item has four distinct options with exactly one 4-point answer;
+// every free-response item has finite answers and a two-key written rubric.
+{for(const f of ['exams/bank','exams/m1-4','exams/m5-8'])load(f);const c={ExamBank:ctx.ExamBank};const B=c.ExamBank,bad=new Set();let n=0;
+
+for(let m=1;m<=8;m++){assert.equal(B.mc[m].length,8);assert.equal(B.fr[m].length,2);
+ for(const it of B.mc[m])for(let i=0;i<800;i++){let q;try{q=it.gen()}catch(e){bad.add(it.id+' threw '+e.message);break}n++;
+  const t=q.options.map(o=>o.t);if(q.options.length!==4)bad.add(it.id+' count '+q.options.length);
+  if(new Set(t).size!==4)bad.add(it.id+' dup '+t.join(' | '));
+  if(q.options.filter(o=>o.tier===4).length!==1)bad.add(it.id+' tier4');
+  if(q.options.some(o=>![0,1,2,4].includes(o.tier)||!o.why))bad.add(it.id+' tier/why');
+  if(/undefined|NaN|Infinity/.test(JSON.stringify(q)))bad.add(it.id+' text: '+JSON.stringify(q).match(/.{0,50}(undefined|NaN|Infinity).{0,20}/)[0]);}
+ for(const it of B.fr[m])for(let i=0;i<800;i++){let q;try{q=it.gen()}catch(e){bad.add(it.id+' threw '+e.message);break}n++;
+  if(/undefined|NaN|Infinity/.test(JSON.stringify(q)))bad.add(it.id+' text: '+JSON.stringify(q).match(/.{0,50}(undefined|NaN|Infinity).{0,20}/)[0]);
+  for(const p of q.parts){if(p.type==='choice'){if(!(p.answer>=0&&p.answer<p.options.length))bad.add(it.id+' choice')}else if(!Number.isFinite(p.answer))bad.add(it.id+' num '+p.label);}
+  if(!q.written||q.written.keys.length!==2)bad.add(it.id+' written');}}
+assert.deepEqual([...bad],[]);console.log(`PASS: ${n.toLocaleString()} practice-exam items (64 multiple-choice and 16 free-response templates).`);}

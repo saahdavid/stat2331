@@ -21,6 +21,16 @@ Each module contains explanations, highlighted formulas, worked examples, common
 
 The source material is the instructor's eight filled lecture notes (not included in this repository). Examples include shark attacks, pesticides in foods, car weight/MPG, soybean experiments, diabetes complications, dragonfly wingspans, the Boston pizzeria, Verve, facial ratios, nurses’ diets, therapeutic touch, and river oxygen. The site expands the hand arithmetic and clarifies several mathematical details rather than copying incidental slide errors. In particular, it distinguishes exact software t values from the course’s smaller-df table values and explains the limits of proportion CI/test equivalence.
 
+## Practice exams
+
+`exams.html` offers a cumulative **final** (24 multiple choice, 3 per module, plus 5 free response; 136 points, suggested 2 hours) and a **quiz for each module** (8 multiple choice plus 2 free response; 48 points, suggested 35 minutes). Every attempt is a new version with fresh numbers and scenarios.
+
+- Students answer everything first; nothing is graded until they submit. An optional countdown uses the suggested time and submits automatically at zero. Unanswered questions trigger an in-page confirmation.
+- **Multiple choice is scored 4/2/1/0.** Every distractor has a tier assigned when the item is written: 2 for a near miss (the right idea reversed, or one slip), 1 for partial understanding or an answer to a different question, 0 otherwise. After submitting, students see every choice's points and why. Numeric options are in ascending order; “Not enough information” stays last.
+- **Free response is worth 8:** the computation steps are checked automatically (4 points, in proportion to the steps correct), and the written part (an interpretation or conclusion) is self-scored with a two-key rubric and a model answer (both keys 4, one key 2, accurate but incomplete 1).
+- The results page totals the score, breaks it down by module with links to the notes and practice, and saves attempts in the browser (`stat2331-exams-v1`).
+- The bank lives in `assets/js/exams/` (8 multiple-choice and 2 free-response templates per module); `assets/js/exams.js` runs the page.
+
 ## Practice and saved mastery
 
 - Most skills have two question styles. **Multi-step questions** (about two in three) break a problem into the hand steps (for example σ_x̄ first, then the probability) and check each step separately, so a student sees exactly where the work went wrong; each step carries its own mistake diagnoses. **Single-answer questions** check the final result. Both styles share the skill's id, title, and mastery streak.
