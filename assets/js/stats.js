@@ -34,6 +34,7 @@
   const tCritical=(df,confidence=.95)=>round(tInv((1+confidence)/2,tableDF(df)),3);
   function tBracket(t,df,twoSided=false){
     const row=tableDF(df),v=Math.abs(t),factor=twoSided?2:1;
+    if(v===0)return {lower:.5*factor,upper:.5*factor,df:row};
     let lower=0,upper=.5;
     for(const a of tails){const critical=round(tInv(1-a,row),3);if(Math.abs(v-critical)<1e-10)return {lower:a*factor,upper:a*factor,df:row};if(v>critical){upper=a;}else{lower=a;break;}}
     return {lower:lower*factor,upper:upper*factor,df:row};

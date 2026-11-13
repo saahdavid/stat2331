@@ -9,3 +9,5 @@
 @media print{.topbar,.sidebar,.practice-panel,.lab-controls,.prev-next,footer,.toc{display:none}.layout{display:block}main{padding:0}.notes{max-width:none}.example,.formula{break-inside:avoid}body{background:white;color:black}}
 
 .reference-table{max-height:410px}.reference-table thead{position:sticky;top:0;z-index:2}.reference-table thead th,.reference-table thead td{background:var(--blue-light)}.lab{font-family:"Atkinson Hyperlegible",sans-serif;line-height:1.55}.stat-drop{animation:stat-drop .35s ease-in both}@keyframes stat-drop{from{transform:translate(var(--drop-x,0px),-140px)}to{transform:translate(0,0)}}
+
+.lab{scroll-margin-top:120px}.interval-grow{transform-box:fill-box;transform-origin:center;animation:interval-grow .35s ease-out}@keyframes interval-grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}@media(max-width:720px){.lab-stage svg text{font-size:22px}.lab-stage svg>text:first-child{display:none}.lab-stage svg text:last-child{font-size:18px}}

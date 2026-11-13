@@ -11,6 +11,17 @@ page.on('pageerror',e=>errors.push(e.message));
 page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
 await mkdir('test-results',{recursive:true});
 try{
+ if(process.argv.includes('--visual')){
+  for(const width of [1440,390])for(const theme of ['light','dark']){
+   await page.setViewportSize({width,height:1000});await page.goto(`${base}/labs.html`,{waitUntil:'networkidle'});await page.evaluate(t=>{localStorage.setItem('stat2331-theme',JSON.stringify(t));document.documentElement.dataset.theme=t;},theme);
+   for(const id of ['regression','binomial','phat','clt','confidence','pvalue','power']){
+    const lab=page.locator(`[data-lab=${id}]`);if(id==='confidence'){await lab.locator('[data-param=type]').selectOption('mu');}if(id==='clt'){await lab.locator('[data-param=n]').fill('30');await lab.locator('[data-param=n]').press('Tab');}if(id==='power'){await lab.locator('[data-param=truep]').fill('.65');await lab.locator('[data-param=truep]').press('Tab');}
+    await lab.locator('[data-do=thousand]').click();await lab.scrollIntoViewIfNeeded();await lab.screenshot({path:`test-results/lab-${id}-${width}-${theme}.png`});assert.ok(!/NaN|undefined|Infinity/.test(await lab.innerText()));
+   }
+  }
+  await page.goto(`${base}/practice.html?module=6`,{waitUntil:'networkidle'});await page.locator('.skill-select').selectOption('m6-xbarprob');await page.getByRole('button',{name:'Show the worked solution',exact:true}).click();await page.locator('.question').screenshot({path:'test-results/worked-solution-phone.png'});
+  assert.deepEqual(errors,[]);console.log('PASS: visual captures of populated labs and worked solution, at both widths and themes.');await browser.close();process.exit(0);
+ }
  const routes=['index.html',...Array.from({length:8},(_,i)=>`module-${i+1}.html`),'practice.html','labs.html','tables.html'];
  for(const route of routes){await page.goto(`${base}/${route}`,{waitUntil:'networkidle'});await page.waitForFunction(()=>!!window.Course);await page.waitForFunction(()=>window.katex!==undefined);await page.evaluate(()=>Course.renderMath());assert.equal(await page.locator('.math-error').count(),0,route);assert.equal(await page.locator('.math:not([data-rendered])').count(),0,route);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,route+' overflow');console.log('Page:',route);}
  // Stress every generator inside the real browser too.
