@@ -5,7 +5,7 @@
  Course.storage=storage;
  Course.progress=()=>storage.read('stat2331-progress-v1',{});
  Course.escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
- Course.renderMath=(el=document.body)=>{el.querySelectorAll('.math:not([data-rendered])').forEach(node=>{if(window.katex){try{katex.render(node.textContent,node,{throwOnError:true,displayMode:node.parentElement.classList.contains('formula')});node.dataset.rendered='true';}catch(e){node.classList.add('math-error');console.error(e);}}});};
+ Course.renderMath=(el=document.body)=>{el.querySelectorAll('.math:not([data-rendered])').forEach(node=>{if(window.katex){try{katex.render(node.textContent,node,{throwOnError:true,displayMode:node.classList.contains('display')||node.parentElement.classList.contains('formula')});node.dataset.rendered='true';}catch(e){node.classList.add('math-error');console.error(e);}}});};
  const savedTheme=storage.read('stat2331-theme',null),theme=savedTheme||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.dataset.theme=theme;
  $('#theme-toggle')?.addEventListener('click',()=>{const t=document.documentElement.dataset.theme==='dark'?'light':'dark';document.documentElement.dataset.theme=t;storage.write('stat2331-theme',t);$('#theme-toggle').setAttribute('aria-pressed',String(t==='dark'));$('#theme-toggle').textContent=t==='dark'?'☀ Light':'◐ Dark';});
  if($('#theme-toggle')){$('#theme-toggle').setAttribute('aria-pressed',String(theme==='dark'));$('#theme-toggle').textContent=theme==='dark'?'☀ Light':'◐ Dark';}

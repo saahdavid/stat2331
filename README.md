@@ -23,6 +23,7 @@ The source material is the instructor's eight filled lecture notes (not included
 
 ## Practice and saved mastery
 
+- Most skills have two question styles. **Multi-step questions** (about two in three) break a problem into the hand steps (for example σ_x̄ first, then the probability) and check each step separately, so a student sees exactly where the work went wrong; each step carries its own mistake diagnoses. **Single-answer questions** check the final result. Both styles share the skill's id, title, and mastery streak.
 - Questions are generated with fresh values and scenario variants. Conceptual questions change numerical context and/or scenario; they are not numerical exercises disguised as arithmetic.
 - Enter a decimal, a percentage, or arithmetic such as `11/200`, `0.48*0.52`, `sqrt(0.25/100)`, or `(2+3)^2`. A small recursive-descent parser handles these inputs; it never evaluates JavaScript.
 - Wrong answers that match a known mistake receive a targeted diagnosis. Every miss or requested solution shows the complete hand solution and TI-84/Excel checks. The next question has new numbers in the same skill.
@@ -97,6 +98,9 @@ assets/js/stats.js              Numerical core and arithmetic parser
 assets/js/questions/shared.js   Question helpers and course metadata
 assets/js/questions/module-N.js Eight skill generators per module
 assets/js/practice.js           Input, feedback, mastery, mixed sets
+assets/js/hand/                 Multi-step questions: stats.js and kit.js (helpers, figures,
+                                TI/Excel snippets), m1–m8.js (generators), merge.js (maps them
+                                onto the course skill ids)
 assets/js/labs/engine.js        Shared controls, animation loop, SVG helpers
 assets/js/labs/module-N.js      Module-specific simulation logic
 assets/js/tables.js             Normal/t lookup helpers
@@ -122,7 +126,7 @@ node scripts/build.mjs
 node tests/core.cjs
 ```
 
-The core test generates 500 questions per skill (32,000 total), checks finite answers and valid unique choices, and exercises quartiles, table conventions, and safe input parsing.
+The core test generates 500 questions per skill and per multi-step style (62,500 total), checks finite answers and valid unique choices, and exercises quartiles, table conventions, and safe input parsing.
 
 For SciPy cross-checks:
 
@@ -143,6 +147,6 @@ python3 -m http.server 2331 --bind 127.0.0.1
 STAT2331_BROWSER=chromium node tests/browser.mjs
 ```
 
-Without `STAT2331_BROWSER=chromium`, the test uses installed Google Chrome. `STAT2331_URL` overrides the local test URL. The browser suite loads all 12 pages, checks rendered math and console errors, generates another 300 questions per skill in-browser, answers each skill correctly and incorrectly, verifies persistence/mixed retries, presses every lab control, tests lookup helpers, and takes desktop/mobile light/dark screenshots in ignored `test-results/`.
+Without `STAT2331_BROWSER=chromium`, the test uses installed Google Chrome. `STAT2331_URL` overrides the local test URL. The browser suite loads all 12 pages, checks rendered math and console errors, generates another 300 questions per skill in-browser, answers each skill in each question style correctly and incorrectly, verifies persistence/mixed retries, presses every lab control, tests lookup helpers, and takes desktop/mobile light/dark screenshots in ignored `test-results/`.
 
 Only KaTeX and Google Fonts load from external CDNs; the course logic, charts, and data are in the repository. If the math CDN is blocked, formulas remain readable as TeX and the exercises still operate, but typeset math needs that network resource. The site makes no analytics requests or student-data submissions.

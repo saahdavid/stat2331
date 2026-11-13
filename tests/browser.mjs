@@ -6,10 +6,17 @@ let playwright;try{playwright=require('playwright');}catch{playwright=require(pr
 const base=process.env.STAT2331_URL||'http://127.0.0.1:2331';
 const browser=await playwright.chromium.launch({...(process.env.STAT2331_BROWSER==='chromium'?{}:{channel:'chrome'}),headless:true});
 const context=await browser.newContext({viewport:{width:1440,height:1000},reducedMotion:'reduce'});
+// Offline runs: STAT2331_KATEX=/path/to/node_modules/katex/dist serves KaTeX locally and skips web fonts.
+if(process.env.STAT2331_KATEX){await context.route(/cdn\.jsdelivr\.net\/npm\/katex@[^/]+\/dist\//,r=>{const f=r.request().url().split('/dist/')[1].split('?')[0];r.fulfill({path:`${process.env.STAT2331_KATEX}/${f}`});});await context.route(/fonts\.(googleapis|gstatic)\.com/,r=>r.abort());}
 const page=await context.newPage(),errors=[];
 page.on('pageerror',e=>errors.push(e.message));
-page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
+page.on('console',m=>{if(m.type()==='error'&&!/ERR_FAILED|net::/.test(m.text()))errors.push(m.text());});
 await mkdir('test-results',{recursive:true});
+const fill=async(page,correct)=>{const q=await page.evaluate(()=>Course.practiceInstances[0].q);
+ if(q.multi){for(const [i,p] of q.parts.entries()){const part=page.locator(`.part[data-i="${i}"]`);if(p.type==='choice')await part.locator(`input[value="${correct?p.answer:(p.answer+1)%p.options.length}"]`).check();else await part.locator('input').fill(correct?String(p.answer):String(p.answer+1000));}return q;}
+ if(q.choices)await page.locator(`input[name=answer][value="${correct?q.choices.indexOf(q.answer):q.choices.findIndex(a=>a!==q.answer)}"]`).check();else await page.locator('input[name=answer]').fill(correct?String(q.answer):'999999999');return q;};
+const force=(page,id,k)=>page.evaluate(([id,k])=>{const s=Course.practiceInstances[0].skills.find(s=>s.id===id);s.generate=k<0?s.sources.original:s.sources.steps[k];},[id,k]);
+
 try{
  if(process.argv.includes('--visual')){
   for(const width of [1440,390])for(const theme of ['light','dark']){
@@ -25,27 +32,30 @@ try{
  const routes=['index.html',...Array.from({length:8},(_,i)=>`module-${i+1}.html`),'practice.html','labs.html','tables.html'];
  for(const route of routes){await page.goto(`${base}/${route}`,{waitUntil:'networkidle'});await page.waitForFunction(()=>!!window.Course);await page.waitForFunction(()=>window.katex!==undefined);await page.evaluate(()=>Course.renderMath());assert.equal(await page.locator('.math-error').count(),0,route);assert.equal(await page.locator('.math:not([data-rendered])').count(),0,route);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,route+' overflow');console.log('Page:',route);}
  // Stress every generator inside the real browser too.
- const count=await page.evaluate(()=>{let count=0;for(const skills of Object.values(Course.questions))for(const s of skills)for(let i=0;i<300;i++){const q=s.generate();if(/undefined|NaN|Infinity/.test(JSON.stringify(q)))throw Error(s.id);if(q.choices?!q.choices.includes(q.answer):!Number.isFinite(q.answer))throw Error(s.id);count++;}return count;});
+ const count=await page.evaluate(()=>{let count=0;for(const skills of Object.values(Course.questions))for(const s of skills)for(let i=0;i<300;i++){const q=s.generate();if(/undefined|NaN|Infinity/.test(JSON.stringify(q)))throw Error(s.id);if(q.multi){for(const p of q.parts)if(p.type==='choice'?!(p.answer>=0&&p.answer<p.options.length):!Number.isFinite(p.answer))throw Error(s.id);}else if(q.choices?!q.choices.includes(q.answer):!Number.isFinite(q.answer))throw Error(s.id);count++;}return count;});
  console.log('Browser-generated questions:',count);
- // Each skill is answered correctly and incorrectly through its visible controls.
+ // Each skill, in each of its question styles, is answered correctly and incorrectly through its visible controls.
+ let flows=0;
  for(let m=1;m<=8;m++){
   await page.goto(`${base}/practice.html?module=${m}`,{waitUntil:'networkidle'});
-  const ids=await page.evaluate(()=>Course.practiceInstances[0].skills.map(s=>s.id));
-  for(const id of ids){await page.locator('.skill-select').selectOption(id);let q=await page.evaluate(()=>Course.practiceInstances[0].q);
-   if(q.choices){await page.locator(`input[name=answer][value="${q.choices.indexOf(q.answer)}"]`).check();}else await page.locator('input[name=answer]').fill(String(q.answer));
-   await page.getByRole('button',{name:'Check my answer',exact:true}).click();assert.equal(await page.locator('.feedback.correct').count(),1,id+' correct');
-   await page.locator('[data-action=next]').click();q=await page.evaluate(()=>Course.practiceInstances[0].q);
-   if(q.choices){await page.locator(`input[name=answer][value="${q.choices.findIndex(a=>a!==q.answer)}"]`).check();}else await page.locator('input[name=answer]').fill('999999999');
-   await page.getByRole('button',{name:'Check my answer',exact:true}).click();assert.equal(await page.locator('.feedback:not(.correct)').count(),1,id+' wrong');assert.ok((await page.locator('.feedback').innerText()).includes('By hand'));assert.equal(await page.locator('.feedback .check').count(),2);}
+  const skills=await page.evaluate(()=>Course.practiceInstances[0].skills.map(s=>({id:s.id,styles:s.sources?s.sources.steps.length:0})));
+  for(const {id,styles} of skills)for(let k=styles?-1:-2;k<(styles||-1);k++){
+   if(k>-2)await force(page,id,k);
+   await page.locator('.skill-select').selectOption(id);await page.evaluate(()=>Course.practiceInstances[0].render());
+   await fill(page,true);await page.getByRole('button',{name:'Check my answer',exact:true}).click();assert.equal(await page.locator('.feedback.correct').count(),1,`${id}/${k} correct`);
+   await page.locator('[data-action=next]').click();const q=await fill(page,false);
+   await page.getByRole('button',{name:'Check my answer',exact:true}).click();assert.equal(await page.locator('.feedback:not(.correct)').count(),1,`${id}/${k} wrong`);assert.ok((await page.locator('.feedback').innerText()).includes('By hand'));
+   if(q.multi){assert.ok(await page.locator('.part.wrong').count()>=1,`${id}/${k} marks the wrong step`);assert.equal(await page.locator('.math-error').count(),0,`${id}/${k} math`);}else assert.equal(await page.locator('.feedback .check').count(),2);
+   flows++;}
  }
- console.log('PASS: all 64 skills answered correctly and incorrectly in the interface.');
+ console.log(`PASS: all 64 skills answered correctly and incorrectly in the interface (${flows} question styles).`);
  await page.goto(`${base}/practice.html?module=1`,{waitUntil:'networkidle'});
- await page.locator('.skill-select').selectOption('m1-proportion');
+ await force(page,'m1-proportion',-1);await page.locator('.skill-select').selectOption('m1-proportion');
  for(let i=0;i<3;i++){const a=await page.evaluate(()=>Course.practiceInstances[0].q.answer);await page.locator('input[name=answer]').fill(`${a*100}%`);await page.getByRole('button',{name:'Check my answer',exact:true}).click();await page.locator('[data-action=next]').click();}
  await page.reload({waitUntil:'networkidle'});assert.equal(await page.evaluate(()=>Course.progress()['m1-proportion'].mastered),true);
  await page.getByRole('button',{name:'Start mixed set · 6 questions',exact:true}).click();
  await page.getByRole('button',{name:'Show the worked solution',exact:true}).click();assert.equal(await page.evaluate(()=>Course.practiceInstances[0].queue.length),6);await page.locator('[data-action=next]').click();
- for(let i=0;i<6;i++){const q=await page.evaluate(()=>Course.practiceInstances[0].q);if(q.choices)await page.locator(`input[name=answer][value="${q.choices.indexOf(q.answer)}"]`).check();else await page.locator('input[name=answer]').fill(String(q.answer));await page.getByRole('button',{name:'Check my answer',exact:true}).click();await page.locator('[data-action=next]').click();}assert.ok((await page.locator('.feedback').innerText()).includes('Mixed set complete'));
+ for(let i=0;i<6;i++){await fill(page,true);await page.getByRole('button',{name:'Check my answer',exact:true}).click();await page.locator('[data-action=next]').click();}assert.ok((await page.locator('.feedback').innerText()).includes('Mixed set complete'));
  console.log('PASS: mastery persistence, percentage input, and mixed-set miss requeue.');
  await page.goto(`${base}/labs.html`,{waitUntil:'networkidle'});assert.equal(await page.locator('.lab').count(),10);
  for(let i=0;i<10;i++){

@@ -3,12 +3,21 @@ const fs=require('node:fs');
 const vm=require('node:vm');
 const S=require('../assets/js/stats.js');
 const ctx=vm.createContext({Stats:S,Math});
-for(const f of ['shared',...Array.from({length:8},(_,i)=>`module-${i+1}`)])vm.runInContext(fs.readFileSync(`assets/js/questions/${f}.js`,'utf8'),ctx);
+const load=f=>vm.runInContext(fs.readFileSync(`assets/js/${f}.js`,'utf8'),ctx,{filename:f});
+for(const f of ['shared',...Array.from({length:8},(_,i)=>`module-${i+1}`)])load(`questions/${f}`);
+for(const f of ['stats','kit',...Array.from({length:8},(_,i)=>`m${i+1}`),'merge'])load(`hand/${f}`);
+let steps=0,styles=0;
 let generated=0;
 for(const [m,skills] of Object.entries(ctx.Course.questions)){
  assert.equal(skills.length,8,`Module ${m}: 8 skills`);
- for(const skill of skills){const variants=new Set();for(let i=0;i<500;i++){
-  const q=skill.generate();generated++;assert.ok(q.prompt&&q.solution&&q.ti&&q.excel,skill.id);
+ for(const skill of skills){
+ for(const gen of (skill.sources||{}).steps||[]){styles++;const seen=new Set();for(let i=0;i<500;i++){const q=gen();steps++;
+  assert.ok(q.multi&&q.prompt&&q.solution&&q.parts.length>=1,skill.id);assert.ok(!/undefined|NaN|Infinity/.test(JSON.stringify(q)),`${skill.id} step version has invalid output`);
+  assert.ok(!/\\[()[\]]/.test(q.prompt+q.solution+JSON.stringify(q.parts)),`${skill.id} has unconverted TeX delimiters`);seen.add(q.prompt);
+  for(const p of q.parts){if(p.type==='choice'){assert.ok(p.answer>=0&&p.answer<p.options.length,skill.id);}else{assert.ok(Number.isFinite(p.answer),skill.id);for(const a of p.alts||[])assert.ok(Number.isFinite(a));for(const x of p.mistakes||[])assert.ok(Number.isFinite(x.value),skill.id);}}}
+  assert.ok(seen.size>=4,`${skill.id} step version must generate fresh variants`);}
+ const generate=skill.sources?skill.sources.original:skill.generate;const variants=new Set();for(let i=0;i<500;i++){
+  const q=generate();generated++;assert.ok(q.prompt&&q.solution&&q.ti&&q.excel,skill.id);
   assert.ok(!/undefined|NaN|Infinity/.test(JSON.stringify(q)),`${skill.id} has invalid output`);
   variants.add(q.prompt);
   if(q.choices){assert.ok(q.choices.length>=2);assert.equal(new Set(q.choices).size,q.choices.length);assert.equal(q.choices.filter(c=>c===q.answer).length,1);}
@@ -24,4 +33,4 @@ assert.equal(S.tBracket(3.204,7).lower,.005);assert.equal(S.tBracket(3.204,7).up
 for(const [input,value] of [['11/200',.055],['0.48*0.52',.2496],['sqrt(0.25/100)',.05],['5.5%',.055],['(2+3)^2',25],['-2^2',-4],['2^-2',.25],['1e-3',.001]])assert.ok(Math.abs(S.parse(input)-value)<1e-12,input);
 for(const input of ['alert(1)','globalThis','1/0','sqrt(-1)','2;3','2**3','constructor()','1e999'])assert.throws(()=>S.parse(input),undefined,input);
 for(let i=0;i<=100;i++){const z=-5+i*.1;assert.ok(Math.abs(S.normalCDF(z)+S.normalCDF(-z)-1)<1e-12);}
-console.log(`PASS: ${generated.toLocaleString()} generated questions across 64 skills; parser, quartiles, conventions, and numerical smoke checks.`);
+console.log(`PASS: ${generated.toLocaleString()} single-answer and ${steps.toLocaleString()} multi-step questions (${styles} multi-step styles) across 64 skills; parser, quartiles, conventions, and numerical smoke checks.`);

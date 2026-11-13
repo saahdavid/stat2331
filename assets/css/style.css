@@ -11,3 +11,37 @@
 .reference-table{max-height:410px}.reference-table thead{position:sticky;top:0;z-index:2}.reference-table thead th,.reference-table thead td{background:var(--blue-light)}.lab{font-family:"Atkinson Hyperlegible",sans-serif;line-height:1.55}.stat-drop{animation:stat-drop .35s ease-in both}@keyframes stat-drop{from{transform:translate(var(--drop-x,0px),-140px)}to{transform:translate(0,0)}}
 
 .lab{scroll-margin-top:120px}.interval-grow{transform-box:fill-box;transform-origin:center;animation:interval-grow .35s ease-out}@keyframes interval-grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}@media(max-width:720px){.lab-stage svg text{font-size:22px}.lab-stage svg>text:first-child{display:none}.lab-stage svg text:last-child{font-size:18px}}
+/* Multi-step practice (merged from stat2331-learn) */
+.q-prompt{margin:13px 0 18px;font-size:19px;line-height:1.55}.q-prompt p{margin:0 0 10px}.q-prompt .table-scroll{margin:10px 0}
+.part{border:1px solid var(--line);border-radius:5px;padding:14px 16px;margin:0 0 12px;background:var(--sheet);min-width:0}
+fieldset.part{margin-inline:0}
+.part-label{display:block;font:700 16px/1.45 'Atkinson Hyperlegible',sans-serif;margin-bottom:9px;padding:0}
+.part-step{display:inline-block;margin-right:8px;padding:1px 8px;border-radius:3px;background:var(--blue-light);color:var(--blue);font-size:13px;letter-spacing:.03em}
+.part-input{display:flex;gap:10px;align-items:center}.part-input input{flex:1;min-width:0;max-width:340px}
+.part .choices{margin-bottom:0}
+.part-fb{font:15px/1.5 'Atkinson Hyperlegible',sans-serif}.part-fb:not(:empty){margin-top:10px}.part-fb p{margin:0}
+.part.right{border-color:var(--green)}.part.right .part-fb strong{color:var(--green)}
+.part.wrong{border-color:var(--red);background:var(--red-light)}.part.wrong .part-fb strong{color:var(--red)}
+.part.shown{border-style:dashed}
+.choice.is-answer{border-color:var(--green);box-shadow:inset 3px 0 0 var(--green)}
+.choice.is-wrong{border-color:var(--red);text-decoration:line-through;text-decoration-color:var(--red)}
+.tip{border-left:3px solid var(--blue);padding:14px 20px;background:var(--blue-light);font-size:17px;margin:20px 0}.tip strong:first-child{color:var(--blue)}
+.feedback .tip{font-size:15px;margin:14px 0 0}
+.math.display{display:block;text-align:center;margin:10px 0;overflow-x:auto;overflow-y:hidden;white-space:nowrap}
+.feedback kbd{display:inline-block;min-width:1.7em;padding:1px 6px;margin:1px 1px;border-radius:4px;background:var(--ink);color:var(--sheet);font:700 12px/1.6 'Atkinson Hyperlegible',sans-serif;text-align:center;box-shadow:0 2px 0 var(--muted);vertical-align:1px}
+.feedback kbd.k2nd,kbd.k2nd{background:#4f8fd6;color:#fff;box-shadow:0 2px 0 #2c5f97}
+.feedback kbd.kalpha,kbd.kalpha{background:#4c9a62;color:#fff}
+.feedback kbd.kmenu,kbd.kmenu{background:transparent;color:var(--ink);box-shadow:none;border:1px dashed var(--muted);font-weight:400}
+.screen{display:inline-block;padding:1px 7px;border-radius:3px;background:#c9d4be;color:#1d2a18;font:14px/1.5 ui-monospace,Menlo,Consolas,monospace;overflow-wrap:anywhere}
+.xl{display:flex;align-items:stretch;max-width:100%;margin:6px 0;border:1px solid #a9b4c2;border-radius:3px;background:#fff;color:#1b1b1b;font:13px/1.6 ui-monospace,Menlo,Consolas,monospace;overflow-x:auto}
+.xl .fx{flex:none;padding:3px 9px;font:italic 14px Georgia,serif;color:#555;background:#f2f2f2;border-right:1px solid #a9b4c2}
+.xl code{padding:3px 9px;white-space:nowrap;background:none;color:inherit}
+.xl .out{flex:none;margin-left:auto;padding:3px 9px;color:#1d6f42;border-left:1px solid #dde2e8}
+.methods details{margin:8px 0}.methods summary{cursor:pointer;font-weight:700}
+.hand-figure{margin:6px 0 12px}
+.curve{width:100%;max-width:520px;height:auto;display:block}
+.curve .axis{stroke:var(--muted);stroke-width:1}.curve .line{fill:none;stroke:var(--ink);stroke-width:1.8}
+.curve .shade{fill:var(--blue);opacity:.3}.curve .shade2{fill:var(--red);opacity:.28}
+.curve text{font:11px 'Atkinson Hyperlegible',sans-serif;fill:var(--muted)}.curve .mark{stroke:var(--muted);stroke-dasharray:3 3}
+@media (max-width:640px){.q-prompt{font-size:17px}.part{padding:12px}.part-input input{max-width:none}}
+.feedback ol li{margin:0 0 9px;line-height:1.7}.feedback ol li .katex{line-height:1.2}.feedback li .math{white-space:normal}.feedback li .katex .mfrac{padding:0 1px}
