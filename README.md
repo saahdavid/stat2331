@@ -24,7 +24,7 @@ Study tools beyond the modules:
 - **Spaced review.** A mastered skill comes back for review after 3 days; each clean review doubles the gap (up to 60 days) and a miss brings it back the next day. Due skills are listed on the home page and in each module's practice.
 - **My mistakes** (`mistakes.html`). Every error that practice or a practice exam recognizes is saved in the browser with its explanation, grouped by module and skill, with links to practice that skill.
 - **What to study next.** Exam results end with the weakest modules, the questions to revisit, and links to notes, practice, and that module's quiz.
-- **Printable exams.** Any practice exam can be printed as a fresh version, with its answer key (best answer, points for every choice, worked solutions, and rubrics) on separate pages.
+- **Printable results.** After submitting an exam, students can print their score, study plan, every question with their answer, and all the feedback. There is no printable blank exam, so the answers are never visible before the work is done.
 - **Review sheets** (`review.html`). One printable page per module, built automatically from the notes: each section's key idea, its formulas, and its common-mistake boxes. Edit the notes and the sheet follows.
 - **Search and glossary** (`search.html`, `glossary.html`). Search covers the notes, practice skills, glossary, method guide, and formula sheet; press `/` on any page to search. Glossary terms live in `assets/js/glossary-data.js`.
 
