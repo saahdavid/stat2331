@@ -40,7 +40,7 @@ The source material is the instructor's eight filled lecture notes (not included
 - Three consecutive correct answers master a skill. A miss resets the current streak; an earned mastery badge stays earned. Looking at a solution counts as an attempt and resets the streak.
 - Mixed mode starts with six distinct skills from the module. A missed skill is appended for a fresh retry before the set finishes. A set may therefore contain more than six questions.
 - Normal-probability exercises accept the rounded table result and the full-precision software result. Solutions explain their difference. Some confidence-interval exercises accept the exact software endpoint as well as the conservative table endpoint.
-- Mastery is saved under `stat2331-progress-v1` in the student’s own browser. It is not sent anywhere and does not sync across devices. Students can export/import a JSON backup on the home page. Clearing browser data removes it. This is ungraded formative practice, not a secure assessment or instructor gradebook.
+- Progress is saved in the student's browser. To move it, **Copy my progress link** (home page) gives a link such as `…/index.html?progress=v1.7777…`; opening it on another device asks before merging it in. A paste box accepts the link too. (One digit per skill encodes the streak and mastery; nothing is sent anywhere.)
 
 ## Using the labs
 

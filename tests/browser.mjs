@@ -104,6 +104,18 @@ try{
   const left=await page.evaluate(()=>{const RX=/p̂|x̄|ŷ|[μσ√≤≥₀₁ₐ²]/;const out=[];const w=document.createTreeWalker(document.querySelector('main'),NodeFilter.SHOW_TEXT);let n;while(n=w.nextNode()){const el=n.parentElement;if(el.closest('.katex,svg,code,kbd,.screen,.xl,.check,[data-lab],button,select,.rr-anim'))continue;if(RX.test(n.nodeValue))out.push(n.nodeValue.trim().slice(0,60));}return out;});
   assert.deepEqual(left,[],`module ${m} has untypeset math`);assert.equal(await page.locator('.math-error').count(),0);}
  console.log('PASS: inline math typeset in all module notes.');
+
+ // Progress ring starts empty; a progress link moves mastery to another browser after the student confirms.
+ {const ctxA=await browser.newContext({permissions:['clipboard-read','clipboard-write']}),pA=await ctxA.newPage();await pA.goto(`${base}/index.html`,{waitUntil:'load'});
+  assert.equal((await pA.$eval('#mastery-percent',e=>getComputedStyle(e).getPropertyValue('--p'))).trim(),'0');
+  await pA.evaluate(()=>{const ids=Object.values(Course.questions).flat().map(s=>s.id);const p={};ids.slice(0,8).forEach(id=>p[id]={streak:3,mastered:true,attempts:3});localStorage.setItem('stat2331-progress-v1',JSON.stringify(p));Course.refreshProgress();});
+  assert.equal(await pA.textContent('#mastery-percent'),'13%');
+  await pA.locator('#copy-progress-link').click();const link=await pA.inputValue('#progress-link');assert.match(link,/\?progress=v1\.7{8}$/);
+  const ctxB=await browser.newContext(),pB=await ctxB.newPage();await pB.goto(link,{waitUntil:'load'});assert.equal(await pB.textContent('#mastery-total'),'0 of 64 skills mastered');
+  await pB.getByRole('button',{name:'Restore my progress'}).click();assert.equal(await pB.textContent('#mastery-total'),'8 of 64 skills mastered');assert.ok(!pB.url().includes('progress='));
+  await pB.locator('#reset-progress').click();await pB.locator('#reset-yes').click();assert.equal(await pB.textContent('#mastery-total'),'0 of 64 skills mastered');
+  await ctxA.close();await ctxB.close();}
+ console.log('PASS: progress ring and progress links between browsers.');
  console.log('PASS: mastery persistence, percentage input, and mixed-set miss requeue.');
  await page.goto(`${base}/labs.html`,{waitUntil:'networkidle'});assert.equal(await page.locator('.lab').count(),10);
  for(let i=0;i<10;i++){
