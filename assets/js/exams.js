@@ -141,7 +141,26 @@
     });
     const h = history(); state.attemptIndex = h.attempts.length;
     h.attempts.push({ exam: state.ex.id, date: new Date().toISOString(), pct: 0 }); save(h);
+    logMistakes();
     review(); record();
+  }
+  function logMistakes() {
+    if (!C.mistakes) return;
+    state.items.forEach((it, i) => {
+      const msgs = [];
+      if (it.kind === 'mc') { if (it.pick == null || it.pts === 4) return; msgs.push(it.q.shown[it.pick].why); }
+      else {
+        it.g.parts.forEach((r, k) => { const p = it.q.parts[k]; if (r.ok) return; const m = p.type === 'choice' ? (p.why || {})[r.pick] : r.mis && r.mis.msg; if (m) msgs.push(`${p.label}: ${m}`); });
+        if (it.g.parts.every(r => r.ok)) return;
+      }
+      C.mistakes.log({ source: 'exam', module: it.m, skill: 'exam', title: `${state.ex.title}, question ${i + 1}`, msgs });
+    });
+  }
+  function studyPlan(t) {
+    const weak = Object.entries(t.byM).map(([m, v]) => ({ m: Number(m), pc: Math.round(100 * v.p / v.max) })).filter(x => x.pc < 80).sort((a, b) => a.pc - b.pc).slice(0, 3);
+    if (!weak.length) return `<h2>What to study next</h2><p>Every module scored 80% or better. Try a new version, or the <a href="exams.html">final</a> if you have not taken it yet.</p>`;
+    const missed = m => state.items.map((it, i) => ({ it, i })).filter(({ it }) => it.m === m && (it.kind === 'mc' ? it.pts < 4 : it.g.steps + (it.self == null ? 4 : it.self) < 8)).map(({ i }) => `<a href="#exam-q-${i}">${i + 1}</a>`);
+    return `<h2>What to study next</h2><p class="small muted">Your weakest modules on this attempt, lowest first.</p><ol class="study-list">${weak.map(w => { const q = missed(w.m); return `<li><strong>Module ${w.m}. ${titles[w.m - 1]}</strong> · ${w.pc}%${q.length ? `<br><span class="small">Questions to revisit: ${q.join(', ')}</span>` : ''}<br><span class="small"><a href="module-${w.m}.html">Reread the notes</a> · <a href="practice.html?module=${w.m}">Practice the skills</a>${state.ex.id === 'm' + w.m ? '' : ` · <button type="button" class="linkish" data-quiz="m${w.m}">Take the Module ${w.m} quiz</button>`}</span></li>`; }).join('')}</ol><p class="small"><a href="mistakes.html">See every mistake you have made so far</a></p>`;
   }
   function totals() {
     let auto = 0, written = 0, pending = 0; const byM = {};
@@ -184,12 +203,14 @@
     const s = state; host.oninput = host.onchange = null;
     s.items.forEach(it => { if (it.kind === 'fr' && !it.g.written.trim()) it.self = 0; });
     host.innerHTML = `<div class="page-intro"><div class="eyebrow">${s.ex.title} · results</div><h1 class="exam-total"></h1><p class="exam-summary"></p>${s.timeUp ? '<p class="exam-timeup"><strong>Time is up.</strong> Your exam was submitted automatically.</p>' : ''}<div class="answer-row"><button class="primary" data-action="retake">Take a new version</button><button data-action="menu">All practice exams</button></div></div>
+    <section class="exam-plan tip"></section>
     <section class="exam-breakdown"><h2>By module</h2><div class="table-scroll"><table><thead><tr><th>Module</th><th>Points</th><th>Score</th><th></th></tr></thead><tbody class="exam-bm"></tbody></table></div></section>
     <ol class="exam-items">${s.items.map(reviewItem).join('')}</ol>`;
     host.onclick = e => {
       const b = e.target.closest('button'); if (!b) return;
       if (b.dataset.action === 'retake') start(s.ex.id, s.timed);
       if (b.dataset.action === 'menu') menu();
+      if (b.dataset.quiz) start(b.dataset.quiz, s.timed);
       if (b.dataset.self != null) { const it = s.items[Number(b.dataset.self)]; it.self = Number(b.dataset.v); updateScores(); record(); }
     };
     updateScores(); C.renderMath(host); window.scrollTo(0, 0);
@@ -201,6 +222,7 @@
       ? `Multiple choice and computation steps: ${t.auto} points. ${t.pending} written answer${t.pending > 1 ? 's' : ''} still to score; scroll to each free-response question and pick a score.`
       : `All parts scored. Completed in about ${s.minutes} minute${s.minutes === 1 ? '' : 's'}.`;
     host.querySelector('.exam-bm').innerHTML = Object.entries(t.byM).map(([m, v]) => { const pc = Math.round(100 * v.p / v.max); return `<tr><td>${m}. ${titles[m - 1]}</td><td>${v.p} / ${v.max}</td><td><span class="exam-bar-meter" style="--w:${pc}%"></span> ${pc}%</td><td><a href="practice.html?module=${m}">Practice</a></td></tr>`; }).join('');
+    host.querySelector('.exam-plan').innerHTML = studyPlan(t);
     s.items.forEach((it, i) => {
       const el = host.querySelector(`[data-score="${i}"]`);
       if (it.kind === 'mc') el.textContent = `${it.pts} / 4 · ${tierWord[it.pts]}`;

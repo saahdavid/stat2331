@@ -4,6 +4,9 @@
  const storage={read(key,fallback){try{return JSON.parse(localStorage.getItem(key))??fallback;}catch{return fallback;}},write(key,v){try{localStorage.setItem(key,JSON.stringify(v));return true;}catch{return false;}}};
  Course.storage=storage;
  Course.progress=()=>storage.read('stat2331-progress-v1',{});
+ Course.mistakes={key:'stat2331-mistakes-v1',read(){return storage.read(this.key,[]);},log(e){const all=this.read();all.push(Object.assign({at:Date.now()},e));storage.write(this.key,all.slice(-300));},clear(){storage.write(this.key,[]);}};
+ Course.review={DAY:864e5,isDue:v=>!!(v&&v.mastered&&v.due&&v.due<=Date.now())};
+ {const p=storage.read('stat2331-progress-v1',{});let ch=false;for(const v of Object.values(p))if(v&&v.mastered&&!v.due){v.interval=3;v.due=Date.now()+3*864e5;ch=true;}if(ch)storage.write('stat2331-progress-v1',p);}
  Course.escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  Course.renderMath=(el=document.body)=>{if(window.Mathify&&window.katex)Mathify.scan(el);el.querySelectorAll('.math:not([data-rendered])').forEach(node=>{if(window.katex){try{katex.render(node.textContent,node,{throwOnError:true,displayMode:node.classList.contains('display')||node.parentElement.classList.contains('formula')});node.dataset.rendered='true';}catch(e){node.classList.add('math-error');console.error(e);}}});};
  const savedTheme=storage.read('stat2331-theme',null),theme=savedTheme||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.dataset.theme=theme;
@@ -13,6 +16,7 @@
  function progress(){const p=Course.progress();let total=0;for(let m=1;m<=8;m++){const skills=Course.questions[m]||[],done=skills.filter(s=>p[s.id]?.mastered).length;total+=done;document.querySelectorAll(`[data-progress="${m}"]`).forEach(el=>{el.textContent=`${done} / ${skills.length} skills`;});document.querySelectorAll(`[data-bar="${m}"]`).forEach(el=>el.style.width=`${done/skills.length*100}%`);}
   if($('#mastery-total'))$('#mastery-total').textContent=`${total} of 64 skills mastered`;
   if($('#mastery-percent')){const pct=Math.round(total/64*100);$('#mastery-percent').textContent=`${pct}%`;$('#mastery-percent').style.setProperty('--p',total/64*100);$('#mastery-percent').setAttribute('aria-label',`${pct}% of skills mastered`);}
+  if($('#review-panel')){const due=[];for(let m=1;m<=8;m++){const list=(Course.questions[m]||[]).filter(sk=>Course.review.isDue(p[sk.id]));if(list.length)due.push([m,list]);}const n=due.reduce((a,[,l])=>a+l.length,0),rp=$('#review-panel');rp.hidden=!n;if(n)rp.innerHTML=`<div><strong>↻ ${n} mastered skill${n===1?' is':'s are'} due for a quick review</strong><p class="small muted">A short check now keeps them sharp for the exam. Each review you pass pushes the next one further out.</p></div><div class="review-links">${due.map(([m,l])=>`<a class="button" href="practice.html?module=${m}&review=1">Module ${m} · ${l.length}</a>`).join('')}</div>`;}
   const last=storage.read('stat2331-last-module',1);if($('#resume')){$('#resume').href=`module-${last}.html#practice`;$('#resume').textContent=`${total?'Continue':'Start'} module ${last} →`;}
  }
  Course.refreshProgress=progress;progress();
@@ -23,7 +27,7 @@
  const decode=raw=>{const m=/(?:progress=)?(v1\.[0-7]*)/.exec(String(raw||'').trim());if(!m)return null;const digits=m[1].slice(3),ids=SKILLS(),out={};ids.forEach((id,i)=>{const d=Number(digits[i]||0);if(d)out[id]={streak:d>>1,mastered:!!(d&1),attempts:0};});return out;};
  const linkFor=()=>{const u=new URL('index.html',location.href);u.search='';u.hash='';u.searchParams.set('progress',encode());return u.href;};
  const countM=p=>Object.values(p).filter(v=>v&&v.mastered).length;
- const merge=incoming=>{const p=Course.progress();for(const [id,v] of Object.entries(incoming)){const o=p[id]||{streak:0,mastered:false,attempts:0};p[id]={streak:Math.max(o.streak||0,v.streak),mastered:!!(o.mastered||v.mastered),attempts:o.attempts||0};}storage.write('stat2331-progress-v1',p);progress();};
+ const merge=incoming=>{const p=Course.progress();for(const [id,v] of Object.entries(incoming)){const o=p[id]||{streak:0,mastered:false,attempts:0};p[id]={streak:Math.max(o.streak||0,v.streak),mastered:!!(o.mastered||v.mastered),attempts:o.attempts||0,interval:o.interval||(v.mastered?3:undefined),due:o.due||(v.mastered?Date.now()+3*864e5:undefined)};}storage.write('stat2331-progress-v1',p);progress();};
  const msg=t=>{if($('#progress-message'))$('#progress-message').textContent=t;};
  $('#copy-progress-link')?.addEventListener('click',()=>{const link=linkFor(),box=$('#progress-link-box'),inp=$('#progress-link');inp.value=link;box.hidden=false;const done=()=>msg(`Link copied. It holds ${countM(Course.progress())} mastered skill${countM(Course.progress())===1?'':'s'}. Send it to yourself, then open it on your other device.`);const fallback=()=>{inp.focus();inp.select();msg('Your link is selected below. Press Ctrl+C (or ⌘C on a Mac) to copy it.');};try{navigator.clipboard.writeText(link).then(done,fallback);}catch{fallback();}});
  $('#progress-link')?.addEventListener('focus',e=>e.target.select());

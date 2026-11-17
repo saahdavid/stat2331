@@ -29,7 +29,7 @@ try{
   await page.goto(`${base}/practice.html?module=6`,{waitUntil:'networkidle'});await page.locator('.skill-select').selectOption('m6-xbarprob');await page.getByRole('button',{name:'Show the worked solution',exact:true}).click();await page.locator('.question').screenshot({path:'test-results/worked-solution-phone.png'});
   assert.deepEqual(errors,[]);console.log('PASS: visual captures of populated labs and worked solution, at both widths and themes.');await browser.close();process.exit(0);
  }
- const routes=['index.html',...Array.from({length:8},(_,i)=>`module-${i+1}.html`),'practice.html','exams.html','choose.html','labs.html','tables.html'];
+ const routes=['index.html',...Array.from({length:8},(_,i)=>`module-${i+1}.html`),'practice.html','exams.html','choose.html','mistakes.html','labs.html','tables.html'];
  for(const route of routes){await page.goto(`${base}/${route}`,{waitUntil:'networkidle'});await page.waitForFunction(()=>!!window.Course);await page.waitForFunction(()=>window.katex!==undefined);await page.evaluate(()=>Course.renderMath());assert.equal(await page.locator('.math-error').count(),0,route);assert.equal(await page.locator('.math:not([data-rendered])').count(),0,route);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,route+' overflow');console.log('Page:',route);}
  // Stress every generator inside the real browser too.
  const count=await page.evaluate(()=>{let count=0;for(const skills of Object.values(Course.questions))for(const s of skills)for(let i=0;i<300;i++){const q=s.generate();if(/undefined|NaN|Infinity/.test(JSON.stringify(q)))throw Error(s.id);if(q.multi){for(const p of q.parts)if(p.type==='choice'?!(p.answer>=0&&p.answer<p.options.length):!Number.isFinite(p.answer))throw Error(s.id);}else if(q.choices?!q.choices.includes(q.answer):!Number.isFinite(q.answer))throw Error(s.id);count++;}return count;});
@@ -87,6 +87,9 @@ try{
  await page.locator('[data-action=menu]').click();await page.locator('#exam-timed').check();await page.locator('[data-start="m1"]').click();
  assert.ok(await page.locator('.exam-timer').isVisible());await page.evaluate(()=>{Course.exams.state.deadline=Date.now()-1;});
  await page.waitForSelector('.exam-timeup',{timeout:5000});
+ {await page.goto(`${base}/exams.html`,{waitUntil:'networkidle'});await page.evaluate(()=>{Course.exams.start('final',false);Course.exams.submit(false);});
+  assert.equal(await page.locator('.exam-plan h2').innerText(),'What to study next');assert.equal(await page.locator('.study-list > li').count(),3);
+  await page.locator('[data-quiz]').first().click();assert.match(await page.locator('.exam-bar strong').innerText(),/Module \d quiz/);await page.evaluate(()=>{Course.exams.submit(false);});}
  console.log(`PASS: ${examRuns} practice exams taken right and wrong; partial-credit scoring, self-grading, confirmation, timer, history.`);
 
  // Feedback box on every page links to the form and names where the student is.
@@ -128,6 +131,23 @@ try{
   assert.match(await page.locator('.chooser-result h3').innerText(),/^Hypothesis test for a proportion/);
   await page.locator('[data-m="pci"]').click();await page.locator('[data-check]').click();assert.equal(await page.locator('.drill-fb .feedback').count(),1);}
  console.log('PASS: hints and the method guide.');
+ // Spaced review: an overdue mastered skill shows on home and in practice; a clean answer doubles its interval.
+ {await page.goto(`${base}/index.html`,{waitUntil:'networkidle'});await page.evaluate(()=>{localStorage.setItem('stat2331-progress-v1',JSON.stringify({'m5-z':{streak:3,mastered:true,attempts:3,interval:3,due:Date.now()-1000}}));});await page.reload({waitUntil:'networkidle'});
+  assert.equal(await page.locator('#review-panel').isHidden(),false);await page.goto(`${base}/practice.html?module=5&review=1`,{waitUntil:'networkidle'});
+  assert.match(await page.locator('.question .eyebrow').first().innerText(),/Review set/i);
+  await page.evaluate(()=>{const P=Course.practiceInstances[0];const s=P.skills.find(s=>s.id==='m5-z');s.generate=s.sources.original;P.skill=s;P.render();});
+  await fill(page,true);await page.getByRole('button',{name:'Check my answer',exact:true}).click();
+  assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('stat2331-progress-v1'))['m5-z'].interval),6);}
+ // My mistakes: a recognized error is logged, listed on the page, linked to its skill, and can be cleared.
+ {await page.goto(`${base}/practice.html?module=5&skill=m5-z`,{waitUntil:'networkidle'});await page.evaluate(()=>localStorage.removeItem('stat2331-mistakes-v1'));
+  assert.equal(await page.locator('.skill-select').inputValue(),'m5-z');
+  const v=await page.evaluate(()=>{const P=Course.practiceInstances[0];const s=P.skill;s.generate=s.sources.original;P.render();const m=P.q.mistakes.find(m=>Number.isFinite(m.value));return m&&m.value;});
+  assert.ok(Number.isFinite(v),'m5-z has a diagnosable mistake');await page.locator('.question input[name=answer]').fill(String(v));await page.getByRole('button',{name:'Check my answer',exact:true}).click();
+  const log=await page.evaluate(()=>Course.mistakes.read());assert.equal(log.length,1);assert.equal(log[0].skill,'m5-z');assert.equal(log[0].msgs.length,1);
+  await page.goto(`${base}/mistakes.html`,{waitUntil:'networkidle'});assert.equal(await page.locator('.mistake-skill').count(),1);assert.equal(await page.locator('.mistake-msgs li').count(),1);
+  assert.match(await page.locator('.mistake-actions a').first().getAttribute('href'),/skill=m5-z/);
+  await page.locator('#mistakes-clear').click();await page.locator('#mc-yes').click();assert.match(await page.locator('#mistakes-root').innerText(),/Nothing here yet/);}
+ console.log('PASS: spaced review and the mistakes page.');
  console.log('PASS: mastery persistence, percentage input, and mixed-set miss requeue.');
  await page.goto(`${base}/labs.html`,{waitUntil:'networkidle'});assert.equal(await page.locator('.lab').count(),10);
  for(let i=0;i<10;i++){
