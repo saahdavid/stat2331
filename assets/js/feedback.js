@@ -5,7 +5,7 @@
 (function () {
   'use strict';
   const FORM = 'https://docs.google.com/forms/d/e/1FAIpQLSeSijkXuPol5U9dj9uTeYE-F4o7LXZ5-W-gqro3rDJ1IYRf9g/viewform';
-  const ENTRY = null;
+  const ENTRY = '1531774866';
   const box = document.querySelector('.site-feedback');
   if (!box) return;
   const refEl = box.querySelector('.fb-ref'), link = box.querySelector('.fb-link'), copy = box.querySelector('.fb-copy');
@@ -27,7 +27,7 @@
   ['pointerenter', 'focusin'].forEach(ev => box.addEventListener(ev, update));
   link.addEventListener('click', update);
   if ('IntersectionObserver' in window) new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) update(); }).observe(box);
-  copy.addEventListener('click', () => {
+  if (copy) copy.addEventListener('click', () => {
     update();
     const done = () => { copy.textContent = 'Copied'; setTimeout(() => { copy.textContent = 'Copy'; }, 1600); };
     const fallback = () => { const r = document.createRange(); r.selectNodeContents(refEl); const s = getSelection(); s.removeAllRanges(); s.addRange(r); copy.textContent = 'Selected: press Ctrl+C'; };

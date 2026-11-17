@@ -95,6 +95,7 @@ try{
   assert.match(await page.locator('.site-feedback .fb-link').getAttribute('href'),/^https:\/\/(forms\.gle|docs\.google\.com\/forms)\//);
   await page.locator('.site-feedback').scrollIntoViewIfNeeded();await page.locator('.site-feedback').hover();
   const ref=await page.locator('.fb-ref').innerText();assert.ok(ref.length>3&&!/undefined/.test(ref),`${route} feedback reference`);
+  const href=await page.locator('.site-feedback .fb-link').getAttribute('href');assert.ok(href.includes('entry.1531774866='+encodeURIComponent(ref)),`${route} prefilled link`);
   if(route.startsWith('practice'))assert.match(ref,/Module 6, /);}
  console.log('PASS: feedback box on every page with a page reference.');
  console.log('PASS: mastery persistence, percentage input, and mixed-set miss requeue.');
