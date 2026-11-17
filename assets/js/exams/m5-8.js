@@ -406,6 +406,7 @@
         keys: [`Gives the rejection region TS ≥ ${n(c, 3)} and decides correctly: TS = ${n(z, 2)} is ${rej ? 'in' : 'not in'} it, so ${rej ? 'reject' : 'fail to reject'} H₀.`, `States the conclusion about Hₐ in context: there ${rej ? 'is' : 'is not'} sufficient evidence the proportion of ${ctx} has increased.`],
         model: `Reject H₀ if TS ≥ ${n(c, 3)}. Since TS = ${n(z, 2)} ${rej ? '≥' : '<'} ${n(c, 3)}, the test statistic is ${rej ? '' : 'not '}in the rejection region, so we ${rej ? 'reject' : 'fail to reject'} H₀. There ${rej ? 'is' : 'is not'} sufficient evidence at the ${a} level that the proportion of ${ctx} has increased from ${n(p0, 2)}.` },
       solution: [`\\(H_0: p = ${tx(p0, 2)}\\), \\(H_a: p > ${tx(p0, 2)}\\).`, `Conditions: \\(np_0 = ${tx(k * p0)}\\) and \\(n(1-p_0) = ${tx(k * (1 - p0))}\\) are at least 10; random sample.`, `\\(\\hat p = ${x}/${k} = ${tx(phat)}\\); SE = \\(\\sqrt{${tx(p0, 2)}(${tx(1 - p0, 2)})/${k}} = ${tx(se)}\\).`, `\\(z = (${tx(phat)} - ${tx(p0, 2)})/${tx(se)} = ${tx(z, 2)}\\).`, `Upper-tailed, \\(\\alpha = ${a}\\): \\(z^*\\) row, column ${a}, so \\(z^* = ${tx(c, 3)}\\). Reject if TS ≥ ${n(c, 3)}.`, `${n(z, 2)} ${rej ? '≥' : '<'} ${n(c, 3)}: ${rej ? 'reject' : 'fail to reject'} H₀.`],
+      figure: root.RRPlot ? root.RRPlot.svg({ dist: 'z', dir: 'gt', crit: c, ts: S.round(z, 2), alpha: a }) : '',
       ti: `STAT ▸ TESTS ▸ 5:1-PropZTest: p0=${n(p0, 2)}, x=${x}, n=${k}, prop>p0 (reports z). invNorm(${n(1 - a)}) = ${n(c, 3)}.`, excel: `=NORM.S.INV(${n(1 - a)})`
     };
   });
@@ -425,6 +426,7 @@
         keys: [`Gives the rejection region TS ≤ −${n(c, 3)} and decides correctly: ${rej ? 'reject' : 'fail to reject'} H₀.`, `Concludes in context about Hₐ: there ${rej ? 'is' : 'is not'} sufficient evidence that the ${ctx[0]} is less than ${mu0} ${ctx[1]}.`],
         model: `Reject H₀ if TS ≤ −${n(c, 3)}. Since TS = ${n(t, 3)} ${rej ? '≤' : '>'} −${n(c, 3)}, it is ${rej ? '' : 'not '}in the rejection region, so we ${rej ? 'reject' : 'fail to reject'} H₀. There ${rej ? 'is' : 'is not'} sufficient evidence at the ${a} level that the ${ctx[0]} is less than ${mu0} ${ctx[1]}.` },
       solution: [`\\(H_0: \\mu = ${mu0}\\), \\(H_a: \\mu < ${mu0}\\).`, `SE = \\(${tx(s, 1)}/\\sqrt{${k}} = ${tx(se)}\\).`, `\\(t = (${tx(xb, 1)} - ${mu0})/${tx(se)} = ${tx(t, 3)}\\), df = ${df}.`, `Lower-tailed, \\(\\alpha = ${a}\\): row df = ${row}, column ${a}, so \\(t^* = ${tx(c, 3)}\\). Reject if TS ≤ −${n(c, 3)}.`, `${n(t, 3)} ${rej ? '≤' : '>'} −${n(c, 3)}: ${rej ? 'reject' : 'fail to reject'} H₀.`],
+      figure: root.RRPlot ? root.RRPlot.svg({ dist: 't', df, dir: 'lt', crit: c, ts: S.round(t, 3), alpha: a }) : '',
       ti: `STAT ▸ TESTS ▸ 2:T-Test (Stats): μ0=${mu0}, x̄=${n(xb, 1)}, Sx=${n(s, 1)}, n=${k}, μ<μ0 (reports t). invT(${n(a)},${df}) = −${n(c, 3)}.`, excel: `=T.INV(${n(a)},${df})`
     };
   });

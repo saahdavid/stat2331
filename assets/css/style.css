@@ -103,3 +103,16 @@ fieldset.part{margin-inline:0}
 .rr-curve path{fill:none;stroke:var(--navy);stroke-width:2.2}[data-theme=dark] .rr-curve path{stroke:var(--blue)}
 .rr-shade{fill:var(--red);opacity:.75}.rr-axis path{stroke:var(--muted);stroke-width:1.2}.rr-mark path{stroke:var(--red);stroke-width:1.5;stroke-dasharray:3 3}
 .rr-label text{font:12px 'Atkinson Hyperlegible',sans-serif;fill:var(--ink)}.rr-label text:nth-child(-n+4){fill:var(--red)}
+/* Drawn rejection-region plots (notes, practice, exams) */
+.rr-plot{margin:16px 0 4px}.rr-plot figcaption{font:15px/1.5 'Atkinson Hyperlegible',sans-serif;color:var(--muted);margin-top:4px}
+.rrp{width:100%;max-width:640px;height:auto;display:block;overflow:visible}
+.rrp-curve{fill:none;stroke:var(--navy);stroke-width:2.4}[data-theme=dark] .rrp-curve{stroke:var(--blue)}
+.rrp-shade{fill:var(--red);opacity:.7}.rrp-axis{stroke:var(--ink);stroke-width:1.4}.rrp-axis-arrow{fill:var(--ink)}.rrp-tick{stroke:var(--ink)}
+.rrp-ticklabel{font:700 12px 'Atkinson Hyperlegible',sans-serif;fill:var(--red)}
+.rrp-crit{stroke:var(--red);stroke-width:1.6;stroke-dasharray:4 3}.rrp-critlabel{font:700 13px 'Atkinson Hyperlegible',sans-serif;fill:var(--red)}
+.rrp-ts{stroke:var(--blue);stroke-width:2.4}.rrp-tslabel{font:700 14px 'Atkinson Hyperlegible',sans-serif;fill:var(--blue)}
+.rrp-dist{font:italic 16px 'Source Serif 4',Georgia,serif;fill:var(--ink)}.rrp-note{font:12px 'Atkinson Hyperlegible',sans-serif;fill:var(--muted)}
+.rr-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 18px;margin-top:10px}.rr-grid .rr-plot{margin:6px 0}.rr-grid .rrp-note{display:none}.rr-grid figcaption{font-size:13px}
+@media(max-width:720px){.rr-grid{grid-template-columns:1fr}}
+.feedback .rrp,.exam-item .rrp{max-width:560px;margin:8px 0 12px}
+@media(max-width:720px){.rrp .rrp-ticklabel{font-size:20px}.rrp .rrp-critlabel{font-size:22px}.rrp .rrp-tslabel{font-size:24px}.rrp .rrp-dist{font-size:26px}.rrp .rrp-note{display:none}.rrp-curve{stroke-width:3.2}}

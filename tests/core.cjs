@@ -5,7 +5,7 @@ const S=require('../assets/js/stats.js');
 const ctx=vm.createContext({Stats:S,Math});
 const load=f=>vm.runInContext(fs.readFileSync(`assets/js/${f}.js`,'utf8'),ctx,{filename:f});
 for(const f of ['shared',...Array.from({length:8},(_,i)=>`module-${i+1}`)])load(`questions/${f}`);
-for(const f of ['stats','kit',...Array.from({length:8},(_,i)=>`m${i+1}`),'merge'])load(`hand/${f}`);
+load('rrplot');for(const f of ['stats','kit',...Array.from({length:8},(_,i)=>`m${i+1}`),'merge'])load(`hand/${f}`);
 let steps=0,styles=0;
 let generated=0;
 for(const [m,skills] of Object.entries(ctx.Course.questions)){

@@ -173,7 +173,7 @@
     }).join('');
     const w = q.written;
     return `<li class="exam-item reviewed" id="exam-q-${i}">${head}<div class="exam-stem">${T(q.stem)}</div>${parts}
-      <div class="feedback"><h4>Steps: ${g.steps} of 4 points</h4><strong>By hand</strong><ol>${q.solution.map(s => `<li>${T(s)}</li>`).join('')}</ol>${q.ti || q.excel ? `<div class="checks">${q.ti ? `<div class="check"><strong>TI-84 check</strong>${E(q.ti)}</div>` : ''}${q.excel ? `<div class="check"><strong>Excel check</strong><code>${E(q.excel)}</code></div>` : ''}</div>` : ''}</div>
+      <div class="feedback"><h4>Steps: ${g.steps} of 4 points</h4><strong>By hand</strong><ol>${q.solution.map(s => `<li>${T(s)}</li>`).join('')}</ol>${q.figure || ''}${q.ti || q.excel ? `<div class="checks">${q.ti ? `<div class="check"><strong>TI-84 check</strong>${E(q.ti)}</div>` : ''}${q.excel ? `<div class="check"><strong>Excel check</strong><code>${E(q.excel)}</code></div>` : ''}</div>` : ''}</div>
       <div class="exam-rubric"><h4>Written: score yourself</h4><p class="small muted">${T(w.prompt)}</p><div class="exam-yours"><strong>Your answer</strong><p>${g.written.trim() ? E(g.written).replace(/\n/g, '<br>') : '<em>No answer written.</em>'}</p></div>
       <div class="exam-keys"><strong>Rubric</strong><ol><li><b>Key 1.</b> ${T(w.keys[0])}</li><li><b>Key 2.</b> ${T(w.keys[1])}</li></ol><p class="small"><b>4</b> both keys · <b>2</b> one key · <b>1</b> accurate but incomplete · <b>0</b> inaccurate or blank</p></div>
       <div class="exam-model"><strong>Model answer</strong><p>${T(w.model)}</p></div>

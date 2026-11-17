@@ -74,8 +74,8 @@
         `\\(z = ${S.fmt(z, 2).replace("−", "-")}\\) is ${reject ? "" : "not "}in the rejection region, so ${reject ? "reject" : "fail to reject"} \\(H_0\\).`,
         `There ${reject ? "is" : "is not"} sufficient evidence at the \\(\\alpha = ${alpha}\\) level that the proportion is ${WORD[dir]} ${n(c.p0)}.`
       ],
-      figure: HandUI.zFig(RR_SHADE(dir, zs, 3.8), { marks: [{ x: Math.max(-3.7, Math.min(3.7, z)), top: "z" }] }),
-      after: "The shaded area is the rejection region (total area α). Software also reports a p-value; rejecting when p-value ≤ α gives the same decision.",
+      figure: RRPlot.svg({ dist: "z", dir, crit: zs, ts: S.round(z, 2), alpha }),
+      after: "Software also reports a p-value; rejecting when p-value ≤ α gives the same decision as the rejection region.",
       ti: `${HandUI.keys("[STAT] [▶] {5:1-PropZTest}")}: p0 = ${n(c.p0)}, x = ${X}, n = ${nn}, prop ${dir === "gt" ? ">" : dir === "lt" ? "<" : "≠"}p0. It reports z = ${S.fmt(z, 4)}. ${HandUI.screen(`invNorm(${n(1 - (dir === "ne" ? alpha / 2 : alpha))})`)} = ${zs.toFixed(3)}.`,
       excel: HandUI.xl(`=NORM.S.INV(${n(1 - (dir === "ne" ? alpha / 2 : alpha))})`, zs.toFixed(3))
     };
@@ -110,8 +110,7 @@
         `Critical value: row \\(df = ${row}\\)${row !== df ? ` (${df} is not in the table, so use the next smaller row)` : ""}, ${COL(alpha, dir)}: \\(t^* = ${ts.toFixed(3)}\\). Reject \\(H_0\\) if ${RULE(dir, ts.toFixed(3))}.`,
         `\\(t = ${S.fmt(t, 3).replace("−", "-")}\\) is ${reject ? "" : "not "}in the rejection region, so ${reject ? "reject" : "fail to reject"} \\(H_0\\). There ${reject ? "is" : "is not"} sufficient evidence at the ${alpha} level that the ${what} is ${WORD[dir]} ${mu0} ${unit}.`
       ],
-      figure: HandUI.tFig(df, RR_SHADE(dir, ts, 4), { marks: [{ x: Math.max(-3.9, Math.min(3.9, t)), top: "t" }] }),
-      after: "The shaded area is the rejection region (total area α).",
+      figure: RRPlot.svg({ dist: "t", df, dir, crit: ts, ts: S.round(t, 3), alpha }),
       ti: `${HandUI.keys("[STAT] [▶] {2:T-Test}")}, Stats: μ0 = ${mu0}, x̄ = ${n(xbar, dec + 2)}, Sx = ${n(s)}, n = ${nn}; it reports t. ${HandUI.screen(`invT(${n(1 - (dir === "ne" ? alpha / 2 : alpha))},${df})`)} uses the exact df${row !== df ? ", so it differs slightly from the table row" : ""}.`,
       excel: HandUI.xl(`=T.INV(${n(1 - (dir === "ne" ? alpha / 2 : alpha))},${row})`, ts.toFixed(3))
     };
@@ -140,7 +139,8 @@
         { type: "choice", label: "Decision and conclusion", options: opts, answer: ans,
           why: { [1 - ans]: `Rejection region: ${RULE(dir, c.toFixed(3))}. The test statistic ${ts} is ${reject ? "in" : "not in"} it.`, 2: "A test never proves anything; it measures the strength of evidence.", 3: "We never 'accept' H₀. Not finding evidence against it is not proof that it is true." } }],
       hand: [`Critical value: ${isP ? "\\(z^*\\) row" : `row \\(df = ${S.tTableRow(df)}\\)${S.tTableRow(df) !== df ? " (next smaller listed df)" : ""}`}, ${COL(alpha, dir)}, so ${isP ? "\\(z^*\\)" : "\\(t^*\\)"} \\(= ${c.toFixed(3)}\\). Reject \\(H_0\\) if ${RULE(dir, c.toFixed(3))}.`,
-        `The test statistic ${ts} is ${reject ? "" : "not "}in the rejection region, so ${reject ? "reject" : "fail to reject"} \\(H_0\\).`, "State the conclusion about \\(H_a\\), in context, without claiming proof."]
+        `The test statistic ${ts} is ${reject ? "" : "not "}in the rejection region, so ${reject ? "reject" : "fail to reject"} \\(H_0\\).`, "State the conclusion about \\(H_a\\), in context, without claiming proof."],
+      figure: RRPlot.svg({ dist: isP ? "z" : "t", df, dir, crit: c, ts, alpha })
     };
   }
 
