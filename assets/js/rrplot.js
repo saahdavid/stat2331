@@ -163,6 +163,7 @@
     play.addEventListener('click', () => { started = true; const from = done >= n ? 0 : done; if (from === 0) finishTo(0); play.disabled = true; animate(from, n, () => { play.disabled = false; label(); }); });
     stepBtn.addEventListener('click', () => { started = true; if (done >= n) return; play.disabled = true; stepBtn.disabled = true; animate(done, done + 1, () => { play.disabled = false; label(); }); });
     finishTo(0); label();
+    if (root.Course && root.Course.renderMath) root.Course.renderMath(el.querySelector('.rr-steps'));
     // play automatically the first time it scrolls into view
     if ('IntersectionObserver' in root) {
       const io = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { io.disconnect(); if (!started) play.click(); } }, { threshold: 0.5 });

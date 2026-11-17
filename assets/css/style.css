@@ -131,3 +131,4 @@ line.rrp-ts-reject{stroke:var(--red)}circle.rrp-ts-reject{fill:var(--red)}line.r
 .rr-stage{overflow-x:auto;max-width:100%}
 @media(max-width:720px){.rr-anim{padding:10px}}
 .rr-grid .rr-plot{min-width:0}
+.math[data-auto]{white-space:normal}

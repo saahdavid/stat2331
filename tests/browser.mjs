@@ -98,6 +98,12 @@ try{
   const href=await page.locator('.site-feedback .fb-link').getAttribute('href');assert.ok(href.includes('entry.1531774866='+encodeURIComponent(ref)),`${route} prefilled link`);
   if(route.startsWith('practice'))assert.match(ref,/Module 6, /);}
  console.log('PASS: feedback box on every page with a page reference.');
+
+ // Math written as plain text in the notes is typeset (no stray p̂, x̄, √, ≤, subscripts left in prose).
+ for(let m=1;m<=8;m++){await page.goto(`${base}/module-${m}.html`,{waitUntil:'networkidle'});
+  const left=await page.evaluate(()=>{const RX=/p̂|x̄|ŷ|[μσ√≤≥₀₁ₐ²]/;const out=[];const w=document.createTreeWalker(document.querySelector('main'),NodeFilter.SHOW_TEXT);let n;while(n=w.nextNode()){const el=n.parentElement;if(el.closest('.katex,svg,code,kbd,.screen,.xl,.check,[data-lab],button,select,.rr-anim'))continue;if(RX.test(n.nodeValue))out.push(n.nodeValue.trim().slice(0,60));}return out;});
+  assert.deepEqual(left,[],`module ${m} has untypeset math`);assert.equal(await page.locator('.math-error').count(),0);}
+ console.log('PASS: inline math typeset in all module notes.');
  console.log('PASS: mastery persistence, percentage input, and mixed-set miss requeue.');
  await page.goto(`${base}/labs.html`,{waitUntil:'networkidle'});assert.equal(await page.locator('.lab').count(),10);
  for(let i=0;i<10;i++){

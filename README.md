@@ -108,6 +108,9 @@ assets/js/stats.js              Numerical core and arithmetic parser
 assets/js/questions/shared.js   Question helpers and course metadata
 assets/js/questions/module-N.js Eight skill generators per module
 assets/js/practice.js           Input, feedback, mastery, mixed sets
+assets/js/mathify.js            Typesets math written as plain text (x̄, p̂, √[…], ≤, subscripts)
+                                before KaTeX runs, everywhere math is rendered
+assets/js/rrplot.js             Animated rejection-region graphs (Module 8)
 assets/js/hand/                 Multi-step questions: stats.js and kit.js (helpers, figures,
                                 TI/Excel snippets), m1–m8.js (generators), merge.js (maps them
                                 onto the course skill ids)
