@@ -90,6 +90,9 @@ try{
  {await page.goto(`${base}/exams.html`,{waitUntil:'networkidle'});await page.evaluate(()=>{Course.exams.start('final',false);Course.exams.submit(false);});
   assert.equal(await page.locator('.exam-plan h2').innerText(),'What to study next');assert.equal(await page.locator('.study-list > li').count(),3);
   await page.locator('[data-quiz]').first().click();assert.match(await page.locator('.exam-bar strong').innerText(),/Module \d quiz/);await page.evaluate(()=>{Course.exams.submit(false);});}
+ {await page.goto(`${base}/exams.html`,{waitUntil:'networkidle'});await page.locator('[data-print="final"]').click();
+  assert.equal(await page.locator('.print-exam .pq').count(),29);assert.equal(await page.locator('.print-key .pk').count(),29);assert.equal(await page.locator('.print-key .rr-anim').count(),0);
+  await page.locator('#print-key').uncheck();assert.ok(await page.locator('.print-key').evaluate(e=>e.classList.contains('no-print')));}
  console.log(`PASS: ${examRuns} practice exams taken right and wrong; partial-credit scoring, self-grading, confirmation, timer, history.`);
 
  // Feedback box on every page links to the form and names where the student is.

@@ -177,3 +177,11 @@ button.linkish{background:none;border:0;padding:0;font:inherit;color:var(--blue)
 .mistake-skill h3{margin:0 0 4px;font-size:1.05rem;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}.mistake-count{font-weight:600;color:var(--muted);font-size:.9rem;white-space:nowrap}
 .mistake-msgs{margin:.5rem 0;padding-left:1.2rem;display:grid;gap:.35rem}.mistake-msgs .times{color:var(--muted);font-size:.85rem}
 .mistake-actions{display:flex;gap:14px;flex-wrap:wrap;font-size:.9rem}.mistakes-toolbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:16px 0}
+
+.print-exam,.print-key{background:var(--sheet);border:1px solid var(--line);border-radius:6px;padding:28px;margin:24px 0;max-width:900px}
+.print-head{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap;border-bottom:2px solid var(--ink);padding-bottom:10px;margin-bottom:14px}
+.print-qs,.pk-list{padding-left:0;list-style:none;margin:0}.pq{margin:0 0 22px;break-inside:avoid}.pq-fr{break-inside:auto}.pq-head{font-weight:700;display:flex;justify-content:space-between;border-bottom:1px solid var(--line);margin-bottom:8px}.pq-head span{font-weight:400;font-size:14px;color:var(--muted)}
+.pq-options{margin:8px 0;padding-left:28px;display:grid;gap:4px}.pq-parts{padding-left:24px}.pq-parts>li{margin:10px 0;break-inside:avoid}.pq-blank{height:64px;border-bottom:1px dashed var(--line)}.pq-lines{height:120px;background:repeating-linear-gradient(transparent 0 29px,var(--line) 29px 30px)}
+.pk{margin:0 0 14px;break-inside:avoid}.pk-tiers{color:var(--muted);font-size:14px;margin-left:8px}.pk-steps{margin:4px 0;padding-left:22px}.pk .small{margin:4px 0}
+@media print{.topbar,.sidebar,footer,.site-feedback,.no-print,.skip{display:none!important}.layout{display:block}main{padding:0}body{background:#fff;color:#000;font-size:12pt}.print-exam,.print-key{border:0;padding:0;margin:0;max-width:none;background:#fff}.print-key{break-before:page}.rr-anim button,.rr-steps{display:none}a{color:#000}}
+.rr-static svg{max-width:520px;width:100%;height:auto}
