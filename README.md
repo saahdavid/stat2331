@@ -15,7 +15,7 @@ Student URL after GitHub Pages is enabled: **https://saahdavid.github.io/stat233
 | 5. Normal & Binomial | Empirical Rule; z scores; normal areas; inverse normal; BINS; exact/cumulative binomial; binomial mean/SD; normal approximation | Building a binomial distribution |
 | 6. Sampling Distributions | p̂ center/spread; minimum n; p̂ probabilities; x̄ probabilities; middle ranges; CLT; n/spread; three distributions/unbiasedness | Sampling distribution of p̂; sample means and CLT |
 | 7. Confidence Intervals | Proportion CI; t* lookup; mean CI; estimate/margin; n for p; n for μ; confidence interpretation; margin changes | Repeated confidence intervals |
-| 8. Hypothesis Testing + Uses & Abuses | Hypotheses; proportion z test; mean t test/table p brackets; tails; decision/conclusion; Type I/II; power/β; CI decisions/practical significance | p-value under H₀; Type I error and power |
+| 8. Hypothesis Testing + Uses & Abuses | Hypotheses; proportion z test; mean t test; critical values and rejection regions; decision/conclusion; Type I/II; power/β; CI decisions/practical significance | p-value under H₀; Type I error and power |
 
 Each module contains explanations, highlighted formulas, worked examples, common mistakes, TI-84 checks, Excel formulas, a table of contents, previous/next links, and practice. The normal and t tables have lookup helpers; the reference page also contains a formula sheet.
 
@@ -53,7 +53,7 @@ Numerical assumptions are visible beside the simulation:
 - The 1000-person p̂ population is sampled **with replacement**, preserving independent Bernoulli draws. A large without-replacement sample would require a finite-population adjustment.
 - CLT populations all have mean 0 and SD 1. Their shared horizontal scale makes narrowing visible. The displayed plotting window clips very remote values; numerical means still use the original values.
 - The confidence lab uses a Wald z interval for p, with count warnings, or the exact-df t interval from an independent normal population for μ. Wald coverage is approximate and may differ from the requested level.
-- The p-value simulation approaches an **exact discrete binomial tail**, whereas the lecture z calculation is a normal approximation without continuity correction. For therapeutic touch, 52/100 gives an exact right tail of about .3822 versus the lecture normal value .3446. The lab explains this distinction.
+- The rejection-region lab simulates samples under H₀ and plots each test statistic z. About α of null samples land in the shaded rejection region (the Type I error rate); because counts are whole numbers the simulated share can differ slightly from α.
 - The power lab repeats the right-sided proportion z test. Discreteness can make the actual Type I rate differ from nominal α; the exact rejection probability for the implemented rule is shown.
 
 ## Course conventions
@@ -66,7 +66,7 @@ Numerical assumptions are visible beside the simulation:
 - Normal approximation to the binomial requires np≥10 and n(1−p)≥10. Use **no continuity correction**.
 - Proportion CIs require random data and at least 10 observed successes and failures. Mean intervals/tests require random data and no extreme skew or extreme outliers.
 - Planned n for p uses `(z*)² p̂(1−p̂)/m²`, with .5 if no estimate exists. Planned n for μ at 95% uses the course approximation `4s²/m²`. **Always round up**.
-- H₀ uses equality. Proportion-test expected counts and SE use p₀. t-test p-values are bracketed from the table, with exact checks shown. Say **reject** or **fail to reject**, and conclude in terms of Hₐ in context.
+- H₀ uses equality. Proportion-test expected counts and SE use p₀. Decisions use critical values from the t-table (z* row for proportions, row df = n − 1 for means, column α or α/2) and the rejection region; p-values are mentioned only as what software reports. Say **reject** or **fail to reject**, and conclude in terms of Hₐ in context.
 
 ## Publish with GitHub Pages
 

@@ -21,7 +21,7 @@ try{
  if(process.argv.includes('--visual')){
   for(const width of [1440,390])for(const theme of ['light','dark']){
    await page.setViewportSize({width,height:1000});await page.goto(`${base}/labs.html`,{waitUntil:'networkidle'});await page.evaluate(t=>{localStorage.setItem('stat2331-theme',JSON.stringify(t));document.documentElement.dataset.theme=t;},theme);
-   for(const id of ['regression','binomial','phat','clt','confidence','pvalue','power']){
+   for(const id of ['regression','binomial','phat','clt','confidence','rejection','power']){
     const lab=page.locator(`[data-lab=${id}]`);if(id==='confidence'){await lab.locator('[data-param=type]').selectOption('mu');}if(id==='clt'){await lab.locator('[data-param=n]').fill('30');await lab.locator('[data-param=n]').press('Tab');}if(id==='power'){await lab.locator('[data-param=truep]').fill('.65');await lab.locator('[data-param=truep]').press('Tab');}
     await lab.locator('[data-do=thousand]').click();await lab.scrollIntoViewIfNeeded();await lab.screenshot({path:`test-results/lab-${id}-${width}-${theme}.png`});assert.ok(!/NaN|undefined|Infinity/.test(await lab.innerText()));
    }
@@ -116,7 +116,7 @@ try{
  await page.locator('[data-lab=regression] [data-do=custom-influence]').click();assert.equal(await page.evaluate(()=>Course.labInstances[1].data.points.length),8);
  await page.locator('[data-lab=phat] [data-param=n]').fill('5');await page.locator('[data-lab=phat] [data-param=n]').press('Tab');assert.ok((await page.locator('[data-lab=phat] .lab-warning').innerText()).includes('fails'));
  await page.goto(`${base}/tables.html`,{waitUntil:'networkidle'});await page.locator('#normal-mode').selectOption('area');assert.ok((await page.locator('#normal-result').innerText()).includes('1.645'));assert.equal(await page.locator('#normal-table .highlight').count(),2);
- await page.locator('#t-mode').selectOption('statistic');await page.locator('#t-tail').selectOption('left');await page.locator('#t-value').fill('-3.204');await page.locator('#t-lookup').click();assert.ok((await page.locator('#t-result').innerText()).includes('0.005 < p < 0.01'));
+ await page.locator('#t-mode').selectOption('test');await page.locator('#t-df').fill('7');await page.locator('#t-tail').selectOption('left');await page.locator('#t-value').fill('0.05');await page.locator('#t-lookup').click();assert.ok((await page.locator('#t-result').innerText()).includes('t* = 1.895. Reject H₀ if TS ≤ −1.895'));await page.locator('#t-df').fill('164');await page.locator('#t-tail').selectOption('two');await page.locator('#t-value').fill('0.01');await page.locator('#t-lookup').click();assert.ok((await page.locator('#t-result').innerText()).includes('t* = 2.626'));
  console.log('PASS: all lab buttons, point keyboard control, parameter warnings, and table lookups.');
  // Visual artifacts at both widths and themes.
  for(const width of [1440,390])for(const theme of ['light','dark']){

@@ -98,3 +98,8 @@ fieldset.part{margin-inline:0}
 .site-feedback code{overflow-wrap:anywhere}.fb-copy{min-height:0;padding:2px 9px;font-size:13px}
 .site-feedback .fb-link{flex:none}
 @media print{.site-feedback{display:none}}
+/* Rejection-region figure (Module 8) */
+.rr-figure{margin:22px 0}.rr-figure svg{width:100%;max-width:660px;height:auto;display:block}
+.rr-curve path{fill:none;stroke:var(--navy);stroke-width:2.2}[data-theme=dark] .rr-curve path{stroke:var(--blue)}
+.rr-shade{fill:var(--red);opacity:.75}.rr-axis path{stroke:var(--muted);stroke-width:1.2}.rr-mark path{stroke:var(--red);stroke-width:1.5;stroke-dasharray:3 3}
+.rr-label text{font:12px 'Atkinson Hyperlegible',sans-serif;fill:var(--ink)}.rr-label text:nth-child(-n+4){fill:var(--red)}

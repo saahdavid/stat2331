@@ -317,6 +317,9 @@
   });
 
   /* ================= Module 8 ================= */
+  const zc = (a, two) => S.round(S.qnorm(1 - (two ? a / 2 : a)), 3);
+  const tc = (df, a, two) => S.tTableValue(S.tTableRow(df), two ? a / 2 : a);
+  const rr = (dir, c) => dir === '>' ? `TS ≥ ${c}` : dir === '<' ? `TS ≤ −${c}` : `|TS| ≥ ${c}`;
   B.MC(8, 'm8-hyp', () => {
     const p0 = R.pick([0.25, 0.3, 0.4, 0.5, 0.6]), up = R.coin(), ph = S.round(p0 + (up ? 1 : -1) * 0.04, 2);
     const ctx = R.pick(['a company claims that the proportion of satisfied customers has increased from', 'a researcher suspects the proportion of left-handed students differs from', 'a coach believes the proportion of injuries has decreased from']);
@@ -338,24 +341,26 @@
       [ph - p0, 0, 'Divide the difference by the standard error.']], 2) };
   });
   B.MC(8, 'm8-pval', () => {
-    const z = S.round(R.step(1.1, 2.8, 0.01), 2), side = R.pick(['>', '\\ne']), right = 1 - S.tableArea(z);
-    return { stem: `A z test of \\(H_a: p ${side} p_0\\) gives \\(z = ${tx(z, 2)}\\). Using the table, what is the p-value?`, numeric: true, options: nums([
-      [side === '>' ? right : 2 * right, 4, side === '>' ? 'Correct: right-tail area beyond z.' : 'Correct: two-sided, so double the tail area.'],
-      [side === '>' ? 2 * right : right, 2, side === '>' ? 'That doubles the tail; Hₐ is one-sided.' : 'Hₐ is two-sided; double the tail area.'],
-      [S.tableArea(z), 1, 'That is the area to the left of z, not the tail beyond it.'],
-      [0.05, 0, 'α is the cutoff, not the p-value.']], 4) };
+    const a = R.pick([0.10, 0.05, 0.01]), side = R.pick(['>', '<', '\\ne']), two = side === '\\ne', c = zc(a, two), other = zc(a, !two);
+    const dirTxt = side === '\\ne' ? '≠' : side;
+    return { stem: `A z test of \\(H_a: p ${side} p_0\\) uses \\(\\alpha = ${a}\\). Which rejection region is correct?`, options: [
+      o(`Reject H₀ if ${rr(dirTxt, c.toFixed(3))}`, 4, two ? `Correct: two-sided, so z* row, column α/2 = ${n(a / 2)}.` : `Correct: one-sided, so z* row, column α = ${a}${side === '<' ? ', with the region in the lower tail' : ''}.`),
+      o(`Reject H₀ if ${rr(dirTxt, other.toFixed(3))}`, 2, two ? 'Right tail(s), wrong column: a two-sided test splits α, so use column α/2.' : 'Right direction, wrong column: a one-sided test puts all of α in one tail, so use column α.'),
+      o(`Reject H₀ if ${rr(side === '<' ? '>' : side === '>' ? '<' : '>', c.toFixed(3))}`, 1, 'The critical value is right, but the region must point the way Hₐ points.'),
+      o(`Reject H₀ if ${rr(dirTxt, a)}`, 0, 'α is the area of the rejection region, not the critical value.')] };
   });
   B.MC(8, 'm8-decide', () => {
-    const a = R.pick([0.05, 0.01]), small = R.coin(), p = small ? S.round(a * R.step(0.1, 0.8, 0.1), 4) : S.round(a + R.step(0.02, 0.3, 0.01), 3);
-    return { stem: `A test of \\(H_0: \\mu = 50\\) versus \\(H_a: \\mu > 50\\) gives p-value = ${n(p)} with \\(\\alpha = ${a}\\). What is the conclusion?`, options: small ? [
-      o('Reject H₀. There is convincing evidence that μ > 50.', 4, 'Correct: p-value < α.'),
+    const a = R.pick([0.05, 0.01]), k = R.pick([9, 12, 16, 21]), df = k - 1, c = tc(df, a, false), inside = R.coin();
+    const ts = S.round(inside ? c + R.step(0.2, 1.5, 0.05) : c - R.step(0.15, Math.min(1.2, c - 0.1), 0.05), 2);
+    return { stem: `A test of \\(H_0: \\mu = 50\\) versus \\(H_a: \\mu > 50\\) with \\(n = ${k}\\) gives \\(t = ${tx(ts, 2)}\\) at \\(\\alpha = ${a}\\). The critical value is \\(t^* = ${tx(c, 3)}\\) (df = ${df}). What is the conclusion?`, options: inside ? [
+      o('Reject H₀. There is convincing evidence that μ > 50.', 4, `Correct: TS = ${n(ts, 2)} ≥ ${n(c, 3)}, so it is in the rejection region.`),
       o('Reject H₀. This proves that μ > 50.', 2, 'Right decision, but a test gives evidence, not proof.'),
-      o('Fail to reject H₀. There is not enough evidence that μ > 50.', 0, 'The p-value is smaller than α.'),
-      o('Accept H₀. The mean is 50.', 0, 'Never “accept” H₀, and here the evidence goes against it.')] : [
-      o('Fail to reject H₀. There is not convincing evidence that μ > 50.', 4, 'Correct: p-value > α.'),
+      o('Fail to reject H₀. There is not enough evidence that μ > 50.', 0, `The TS ${n(ts, 2)} is beyond t* = ${n(c, 3)}: it is in the rejection region.`),
+      o('Accept H₀. The mean is 50.', 0, 'Never “accept” H₀, and here the TS is in the rejection region.')] : [
+      o('Fail to reject H₀. There is not convincing evidence that μ > 50.', 4, `Correct: TS = ${n(ts, 2)} < ${n(c, 3)}, so it is not in the rejection region.`),
       o('Accept H₀. The data show that μ = 50.', 2, 'Right decision, wrong wording: failing to reject does not show H₀ is true.'),
-      o('Reject H₀, because the p-value is small.', 0, 'Compare with α: this p-value is larger than α.'),
-      o('Reject H₀. There is convincing evidence that μ > 50.', 0, 'The p-value is larger than α.')] };
+      o('Reject H₀, because the test statistic is positive.', 0, `A positive TS is not enough; it must reach t* = ${n(c, 3)}.`),
+      o('Reject H₀. There is convincing evidence that μ > 50.', 0, `The TS ${n(ts, 2)} has not reached t* = ${n(c, 3)}.`)] };
   });
   B.MC(8, 'm8-errors', () => {
     const [h0, ha] = R.pick([['the new drug is no better than the old one', 'the new drug is better'], ['the machine is filling bags correctly', 'the machine is underfilling bags'], ['the coin is fair', 'the coin is biased']]);
@@ -372,60 +377,55 @@
     o('using a two-sided test instead of a one-sided test', 1, 'A two-sided test spreads α over two tails, which lowers power for a given direction.'),
     o('increasing the variability of the data', 0, 'More noise makes effects harder to detect.')] }));
   B.MC(8, 'm8-tbracket', () => {
-    const k = R.pick([12, 15, 20, 25]), df = k - 1, tails = S.T_TAIL.slice(3, 10), i = R.int(1, tails.length - 2);
-    const tlo = S.tTableValue(df, tails[i]), thi = S.tTableValue(df, tails[i + 1]), t = S.round(tlo + (thi - tlo) * R.step(0.3, 0.7, 0.1), 2);
-    const b = (a, c) => `between ${n(a, 4)} and ${n(c, 4)}`;
-    return { stem: `A one-sided t test (\\(H_a: \\mu > \\mu_0\\)) with \\(n = ${k}\\) gives \\(t = ${tx(t, 2)}\\). Using the t table, the p-value is`, numeric: true, options: nums([
-      [tails[i + 1], 4, `Correct: in the df = ${df} row, ${n(t, 2)} falls between ${tlo} and ${thi}, whose upper-tail areas are ${n(tails[i])} and ${n(tails[i + 1])}.`],
-      [tails[i + 2] || tails[i + 1] / 2, 2, 'Off by one column: find where t sits between two table entries in its row.'],
-      [2 * tails[i + 1], 1, 'That doubles the tail areas; this Hₐ is one-sided.'],
-      [tails[i - 1] || 0.25, 0, 'Read the row for df = n − 1, and the areas above t.']], 4, v => {
-        const j = tails.indexOf(v); if (j > 0) return b(v, tails[j - 1]); if (j === 0) return b(v, 0.25); return b(v, v * 2); }) };
+    const k = R.pick([9, 12, 15, 20, 25, 41, 65, 165]), df = k - 1, row = S.tTableRow(df), a = R.pick([0.10, 0.05, 0.01]), side = R.pick(['>', '<', '\\ne']), two = side === '\\ne';
+    const c = tc(df, a, two), wrongCol = tc(df, a, !two), zstar = zc(a, two), up = S.tTableValue(S.T_DF.find(d => d > row) || row, two ? a / 2 : a);
+    return { stem: `A t test of \\(H_a: \\mu ${side} \\mu_0\\) uses a sample of \\(n = ${k}\\) and \\(\\alpha = ${a}\\). Using the t-table, what is the critical value \\(t^*\\)?`, numeric: true, options: nums([
+      [c, 4, `Correct: row df = ${row}${row !== df ? ` (${df} is not listed, so the next smaller df)` : ''}, column ${two ? 'α/2 = ' + n(a / 2) : 'α = ' + a}.`],
+      [wrongCol, 2, two ? 'A two-sided test uses column α/2, not α.' : 'A one-sided test uses column α, not α/2.'],
+      [row !== df && up !== c ? up : zstar, 1, row !== df && up !== c ? `df = ${df} is not listed: use the next smaller row (${row}), not the next larger.` : 'That is z*. For a mean with s, use the t row for df = n − 1.'],
+      [a, 0, 'α is the area of the rejection region, not the critical value.']], 3, v => n(v, 3)) };
   });
-  B.MC(8, 'm8-practical', () => ({ stem: R.pick(['A study of 50,000 adults finds a new diet lowers weight by an average of 0.2 pound, with p-value < 0.001. Which statement is best?', 'With 80,000 students, an app raises test scores by 0.3 point out of 100 (p-value = 0.0004). Which statement is best?']), options: [
+  B.MC(8, 'm8-practical', () => ({ stem: R.pick(['A study of 50,000 adults finds a new diet lowers weight by an average of 0.2 pound, and the test statistic falls far into the rejection region. Which statement is best?', 'With 80,000 students, an app raises test scores by 0.3 point out of 100, and the test statistic falls in the rejection region at α = 0.01. Which statement is best?']), options: [
     o('The result is statistically significant but may not be practically important.', 4, 'Correct: huge samples detect tiny effects.'),
-    o('The result is practically important because the p-value is so small.', 2, 'The p-value measures evidence, not the size of the effect.'),
+    o('The result is practically important because the test statistic is so extreme.', 2, 'An extreme TS measures evidence against H₀, not the size of the effect.'),
     o('The result is not statistically significant because the effect is small.', 1, 'Small effects can be statistically significant with large n.'),
     o('The study proves the effect is large.', 0, 'Nothing here shows a large effect.')] }));
 
   B.FR(8, 'm8-ztest', () => {
     const p0 = R.pick([0.2, 0.25, 0.3, 0.4, 0.5]), k = R.pick([200, 250, 400, 500]), ph = S.round(p0 + R.step(0.02, 0.08, 0.01), 2), x = Math.round(ph * k);
-    const phat = x / k, se = Math.sqrt(p0 * (1 - p0) / k), z = (phat - p0) / se, pv = S.round(1 - S.tableArea(z), 4), a = 0.05, rej = pv < a;
+    const a = R.pick([0.05, 0.01, 0.10]), phat = x / k, se = Math.sqrt(p0 * (1 - p0) / k), z = (phat - p0) / se, c = zc(a, false), rej = z >= c;
     const ctx = R.pick(['shoppers who use self-checkout', 'adults who work from home at least one day a week', 'students who own a tablet']);
     return {
-      stem: `Last year ${n(p0 * 100)}% of ${ctx}. This year a random sample of ${k} finds ${x}. Test whether the proportion has increased, at \\(\\alpha = 0.05\\).`,
+      stem: `Last year ${n(p0 * 100)}% of ${ctx}. This year a random sample of ${k} finds ${x}. Test whether the proportion has increased, at \\(\\alpha = ${a}\\).`,
       parts: [
         { type: 'choice', label: 'Alternative hypothesis', options: [`\\(H_a: p > ${tx(p0, 2)}\\)`, `\\(H_a: p \\ne ${tx(p0, 2)}\\)`, `\\(H_a: \\hat p > ${tx(p0, 2)}\\)`], answer: 0, fixed: true, why: { 1: 'The claim is an increase, so Hₐ is one-sided.', 2: 'Hypotheses are about p, not p̂.' } },
         { type: 'num', label: '\\(\\hat p\\)', answer: phat },
         { type: 'num', label: 'Test statistic \\(z\\)', answer: z, tol: 0.02, mistakes: [{ value: (phat - p0) / Math.sqrt(phat * (1 - phat) / k), msg: 'Use p₀ in the SE.' }] },
-        { type: 'num', label: 'p-value (table)', answer: pv, alts: [1 - S.pnorm(z)], tol: 0.0015, mistakes: [{ value: S.tableArea(z), msg: 'That is the left area; Hₐ is “>”, so use the right tail.' }, { value: 2 * pv, msg: 'Hₐ is one-sided; do not double.' }] }],
-      written: { prompt: 'State your decision and conclusion in context.',
-        keys: [`Makes the decision by comparing the p-value with 0.05: ${rej ? 'reject' : 'fail to reject'} H₀.`, `States the conclusion about Hₐ in context: there ${rej ? 'is' : 'is not'} convincing evidence the proportion of ${ctx} has increased.`],
-        model: `Since the p-value ${n(pv)} is ${rej ? 'less' : 'greater'} than 0.05, we ${rej ? 'reject' : 'fail to reject'} H₀. There ${rej ? 'is' : 'is not'} convincing evidence that the proportion of ${ctx} has increased from ${n(p0, 2)}.` },
-      solution: [`\\(H_0: p = ${tx(p0, 2)}\\), \\(H_a: p > ${tx(p0, 2)}\\).`, `Conditions: \\(np_0 = ${tx(k * p0)}\\) and \\(n(1-p_0) = ${tx(k * (1 - p0))}\\) are at least 10.`, `\\(\\hat p = ${x}/${k} = ${tx(phat)}\\); SE = \\(\\sqrt{${tx(p0, 2)}(${tx(1 - p0, 2)})/${k}} = ${tx(se)}\\).`, `\\(z = (${tx(phat)} - ${tx(p0, 2)})/${tx(se)} = ${tx(z, 2)}\\).`, `p-value = \\(1 - ${tx(S.tableArea(z))} = ${tx(pv)}\\).`],
-      ti: `STAT ▸ TESTS ▸ 5:1-PropZTest: p0=${n(p0, 2)}, x=${x}, n=${k}, prop>p0`, excel: `=1-NORM.S.DIST(${n(z, 4)},TRUE)`
+        { type: 'num', label: 'Critical value \\(z^*\\)', answer: c, tol: 0.0015, mistakes: [{ value: zc(a, true), msg: 'Hₐ is one-sided: use column α, not α/2.' }] }],
+      written: { prompt: 'State the rejection region, your decision, and your conclusion in context.',
+        keys: [`Gives the rejection region TS ≥ ${n(c, 3)} and decides correctly: TS = ${n(z, 2)} is ${rej ? 'in' : 'not in'} it, so ${rej ? 'reject' : 'fail to reject'} H₀.`, `States the conclusion about Hₐ in context: there ${rej ? 'is' : 'is not'} sufficient evidence the proportion of ${ctx} has increased.`],
+        model: `Reject H₀ if TS ≥ ${n(c, 3)}. Since TS = ${n(z, 2)} ${rej ? '≥' : '<'} ${n(c, 3)}, the test statistic is ${rej ? '' : 'not '}in the rejection region, so we ${rej ? 'reject' : 'fail to reject'} H₀. There ${rej ? 'is' : 'is not'} sufficient evidence at the ${a} level that the proportion of ${ctx} has increased from ${n(p0, 2)}.` },
+      solution: [`\\(H_0: p = ${tx(p0, 2)}\\), \\(H_a: p > ${tx(p0, 2)}\\).`, `Conditions: \\(np_0 = ${tx(k * p0)}\\) and \\(n(1-p_0) = ${tx(k * (1 - p0))}\\) are at least 10; random sample.`, `\\(\\hat p = ${x}/${k} = ${tx(phat)}\\); SE = \\(\\sqrt{${tx(p0, 2)}(${tx(1 - p0, 2)})/${k}} = ${tx(se)}\\).`, `\\(z = (${tx(phat)} - ${tx(p0, 2)})/${tx(se)} = ${tx(z, 2)}\\).`, `Upper-tailed, \\(\\alpha = ${a}\\): \\(z^*\\) row, column ${a}, so \\(z^* = ${tx(c, 3)}\\). Reject if TS ≥ ${n(c, 3)}.`, `${n(z, 2)} ${rej ? '≥' : '<'} ${n(c, 3)}: ${rej ? 'reject' : 'fail to reject'} H₀.`],
+      ti: `STAT ▸ TESTS ▸ 5:1-PropZTest: p0=${n(p0, 2)}, x=${x}, n=${k}, prop>p0 (reports z). invNorm(${n(1 - a)}) = ${n(c, 3)}.`, excel: `=NORM.S.INV(${n(1 - a)})`
     };
   });
   B.FR(8, 'm8-ttest', () => {
-    const k = R.pick([12, 15, 16, 20, 25]), mu0 = R.int(40, 80), s = S.round(R.step(4, 12, 0.1), 1), df = k - 1;
-    const xb = S.round(mu0 - R.step(0.4, 1.0, 0.05) * s * 2 / Math.sqrt(k), 1), se = s / Math.sqrt(k), t = (xb - mu0) / se;
-    const row = S.tTableRow(df), absT = Math.abs(t), tails = S.T_TAIL; let j = tails.findIndex(a => S.tTableValue(row, a) > absT);
-    if (j < 0) j = tails.length; const loA = j === 0 ? 0.25 : tails[j - 1], hiA = j === tails.length ? 0 : tails[j];
-    const opts = ['between 0.10 and 0.25 (or larger)', 'between 0.05 and 0.10', 'between 0.025 and 0.05', 'between 0.01 and 0.025', 'between 0.005 and 0.01', 'less than 0.005'];
-    const pvx = S.pt(t, df), cut = [0.10, 0.05, 0.025, 0.01, 0.005, 0]; const ans = cut.findIndex(c => pvx > c);
-    const rej = pvx < 0.05, ctx = R.pick([['mean battery life', 'hours'], ['mean fill weight', 'grams'], ['mean delivery time', 'minutes']]);
+    const k = R.pick([9, 12, 15, 16, 20, 25]), mu0 = R.int(40, 80), s = S.round(R.step(4, 12, 0.1), 1), df = k - 1, a = R.pick([0.05, 0.01, 0.10]);
+    const xb = S.round(mu0 - R.step(0.4, 1.0, 0.05) * s * 2.6 / Math.sqrt(k), 1), se = s / Math.sqrt(k), t = (xb - mu0) / se;
+    const row = S.tTableRow(df), c = tc(df, a, false), rej = t <= -c;
+    const ctx = R.pick([['mean battery life', 'hours'], ['mean fill weight', 'grams'], ['mean delivery time', 'minutes']]);
     return {
-      stem: `A company claims the ${ctx[0]} is ${mu0} ${ctx[1]}. A consumer group suspects it is less. A random sample of ${k} gives \\(\\bar x = ${tx(xb, 1)}\\) and \\(s = ${tx(s, 1)}\\). The data show no strong skew. Test at \\(\\alpha = 0.05\\).`,
+      stem: `A company claims the ${ctx[0]} is ${mu0} ${ctx[1]}. A consumer group suspects it is less. A random sample of ${k} gives \\(\\bar x = ${tx(xb, 1)}\\) and \\(s = ${tx(s, 1)}\\). The data show no strong skew. Test at \\(\\alpha = ${a}\\).`,
       parts: [
         { type: 'num', label: 'Standard error', answer: se, tol: 0.0015, mistakes: [{ value: s / k, msg: 'Divide by √n.' }] },
         { type: 'num', label: 'Test statistic \\(t\\)', answer: t, tol: 0.006, mistakes: [{ value: -t, msg: 't = (x̄ − μ₀)/SE; keep the sign.' }] },
         { type: 'num', label: 'Degrees of freedom', answer: df, mistakes: [{ value: k, msg: 'df = n − 1.' }] },
-        { type: 'choice', label: 'p-value from the t table', options: opts, answer: ans, fixed: true, why: {} }],
-      written: { prompt: 'State your decision and conclusion in context.',
-        keys: [`Compares the p-value with 0.05 and ${rej ? 'rejects' : 'fails to reject'} H₀.`, `Concludes in context about Hₐ: there ${rej ? 'is' : 'is not'} convincing evidence that the ${ctx[0]} is less than ${mu0} ${ctx[1]}.`],
-        model: `The p-value is ${opts[ans]}, which is ${rej ? 'less' : 'greater'} than 0.05, so we ${rej ? 'reject' : 'fail to reject'} H₀. There ${rej ? 'is' : 'is not'} convincing evidence that the ${ctx[0]} is less than ${mu0} ${ctx[1]}.` },
-      solution: [`\\(H_0: \\mu = ${mu0}\\), \\(H_a: \\mu < ${mu0}\\).`, `SE = \\(${tx(s, 1)}/\\sqrt{${k}} = ${tx(se)}\\).`, `\\(t = (${tx(xb, 1)} - ${mu0})/${tx(se)} = ${tx(t, 3)}\\), df = ${df}.`, `In the df = ${row} row, |t| = ${n(absT, 3)} lies between upper-tail areas ${n(loA)} and ${n(hiA)}. Exact p-value: ${n(pvx)}.`],
-      ti: `STAT ▸ TESTS ▸ 2:T-Test (Stats): μ0=${mu0}, x̄=${n(xb, 1)}, Sx=${n(s, 1)}, n=${k}, μ<μ0`, excel: `=T.DIST(${n(t, 4)},${df},TRUE)`
+        { type: 'num', label: 'Critical value \\(t^*\\) from the t-table', answer: c, tol: 0.0015, mistakes: [{ value: tc(df, a, true), msg: 'Hₐ is one-sided: use column α, not α/2.' }, { value: zc(a, false), msg: 'That is z*; use the t row for df = n − 1.' }] }],
+      written: { prompt: 'State the rejection region, your decision, and your conclusion in context.',
+        keys: [`Gives the rejection region TS ≤ −${n(c, 3)} and decides correctly: ${rej ? 'reject' : 'fail to reject'} H₀.`, `Concludes in context about Hₐ: there ${rej ? 'is' : 'is not'} sufficient evidence that the ${ctx[0]} is less than ${mu0} ${ctx[1]}.`],
+        model: `Reject H₀ if TS ≤ −${n(c, 3)}. Since TS = ${n(t, 3)} ${rej ? '≤' : '>'} −${n(c, 3)}, it is ${rej ? '' : 'not '}in the rejection region, so we ${rej ? 'reject' : 'fail to reject'} H₀. There ${rej ? 'is' : 'is not'} sufficient evidence at the ${a} level that the ${ctx[0]} is less than ${mu0} ${ctx[1]}.` },
+      solution: [`\\(H_0: \\mu = ${mu0}\\), \\(H_a: \\mu < ${mu0}\\).`, `SE = \\(${tx(s, 1)}/\\sqrt{${k}} = ${tx(se)}\\).`, `\\(t = (${tx(xb, 1)} - ${mu0})/${tx(se)} = ${tx(t, 3)}\\), df = ${df}.`, `Lower-tailed, \\(\\alpha = ${a}\\): row df = ${row}, column ${a}, so \\(t^* = ${tx(c, 3)}\\). Reject if TS ≤ −${n(c, 3)}.`, `${n(t, 3)} ${rej ? '≤' : '>'} −${n(c, 3)}: ${rej ? 'reject' : 'fail to reject'} H₀.`],
+      ti: `STAT ▸ TESTS ▸ 2:T-Test (Stats): μ0=${mu0}, x̄=${n(xb, 1)}, Sx=${n(s, 1)}, n=${k}, μ<μ0 (reports t). invT(${n(a)},${df}) = −${n(c, 3)}.`, excel: `=T.INV(${n(a)},${df})`
     };
   });
 })(globalThis);

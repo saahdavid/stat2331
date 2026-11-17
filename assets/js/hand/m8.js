@@ -32,6 +32,15 @@
     };
   }
 
+  // ---- critical values (z* row and t rows of the course t-table) ----
+  const ZSTAR = a => S.round(S.qnorm(1 - a), 3);
+  const zCrit = (alpha, dir) => ZSTAR(dir === "ne" ? alpha / 2 : alpha);
+  const tCrit = (df, alpha, dir) => S.tTableValue(S.tTableRow(df), dir === "ne" ? alpha / 2 : alpha);
+  const RULE = (dir, c) => dir === "gt" ? `\\(\\text{TS} \\ge ${c}\\)` : dir === "lt" ? `\\(\\text{TS} \\le -${c}\\)` : `\\(|\\text{TS}| \\ge ${c}\\)`;
+  const IN_RR = (ts, dir, c) => dir === "gt" ? ts >= c : dir === "lt" ? ts <= -c : Math.abs(ts) >= c;
+  const RR_SHADE = (dir, c, hi) => dir === "gt" ? [[c, hi]] : dir === "lt" ? [[-hi, -c]] : [[-hi, -c], [c, hi]];
+  const COL = (alpha, dir) => dir === "ne" ? `column \\(\\alpha/2 = ${n(alpha / 2)}\\)` : `column \\(\\alpha = ${alpha}\\)`;
+
   // ---- one-proportion z test ----
   const ZCTX = [
     { what: "blindfolded practitioners identify the correct hand", p0: 0.5 }, { what: "people choose the number 7 from 1 to 10", p0: 0.1 },
@@ -45,110 +54,77 @@
     const shift = (dir === "lt" ? -1 : dir === "gt" ? 1 : R.pick([-1, 1])) * R.int(10, 320) / 100;
     let X = Math.round(nn * (c.p0 + shift * se));
     X = Math.max(1, Math.min(nn - 1, X));
-    const ph = X / nn, z = (ph - c.p0) / se, zr = S.zRound(z);
-    const left = S.tableArea(z);
-    const pvT = dir === "gt" ? 1 - left : dir === "lt" ? left : 2 * (1 - S.tableArea(Math.abs(z)));
-    const pvE = dir === "gt" ? 1 - S.pnorm(z) : dir === "lt" ? S.pnorm(z) : 2 * (1 - S.pnorm(Math.abs(z)));
-    const reject = pvE <= alpha;
-    const zWrong = (ph - c.p0) / Math.sqrt(ph * (1 - ph) / nn);
-    const pvWrongSide = dir === "ne" ? (1 - S.pnorm(Math.abs(z))) : 1 - pvE;
-    const figShade = dir === "gt" ? [[z, 4]] : dir === "lt" ? [[-4, z]] : [[-4, -Math.abs(z)], [Math.abs(z), 4]];
+    const ph = X / nn, z = (ph - c.p0) / se, zs = zCrit(alpha, dir), reject = IN_RR(z, dir, zs);
+    const zWrong = (ph - c.p0) / Math.sqrt(ph * (1 - ph) / nn), zsOther = zCrit(alpha, dir === "ne" ? "gt" : "ne");
     return {
       prompt: `<p>Test whether the proportion of all cases where ${c.what} is <strong>${WORD[dir]} ${n(c.p0)}</strong>. In a random sample of ${nn}, ${X} cases qualify. Use \\(\\alpha = ${alpha}\\).</p>`,
       parts: [
-        { type: "num", label: "Test statistic \\(z\\) (2 decimals)", answer: z, tol: 0.011, show: zr.toFixed(2),
+        { type: "num", label: "Test statistic \\(z\\) (2 decimals)", answer: z, tol: 0.011, show: S.fmt(z, 2),
           mistakes: [{ value: zWrong, tol: 0.011, msg: "You used \\(\\hat p\\) in the standard error. Tests assume \\(H_0\\), so use \\(\\sqrt{p_0(1-p_0)/n}\\)." }, { value: -z, tol: 0.011, msg: "Sign reversed: compute \\(\\hat p - p_0\\)." }] },
-        { type: "num", label: "p-value (4 decimals)", answer: pvT, alts: [pvE], tol: 0.0025, show: `${f4(pvT)} (table) or ${f4(pvE)} (software)`,
-          mistakes: [{ value: pvWrongSide, tol: 0.0025, msg: dir === "ne" ? "Two-sided: double the one-tail area." : `That is the area on the wrong side. \\(H_a\\) says "${WORD[dir]}," so the p-value is the ${dir === "gt" ? "right" : "left"} tail.` }] },
+        { type: "num", label: "Critical value \\(z^*\\) (from the \\(z^*\\) row)", answer: zs, tol: 0.0015, show: zs.toFixed(3),
+          mistakes: [{ value: zsOther, tol: 0.0015, msg: dir === "ne" ? "Two-sided: use column \\(\\alpha/2\\), not \\(\\alpha\\)." : "One-sided: use column \\(\\alpha\\), not \\(\\alpha/2\\)." }, { value: -zs, tol: 0.0015, msg: "Enter \\(z^*\\) as a positive number; the minus sign goes in the rejection rule." }] },
         { type: "choice", label: `Decision at \\(\\alpha = ${alpha}\\)`, options: ["Reject \\(H_0\\)", "Fail to reject \\(H_0\\)"], answer: reject ? 0 : 1, fixed: true,
-          why: { [reject ? 1 : 0]: `Compare the p-value (${f4(pvE)}) with \\(\\alpha = ${alpha}\\): ${reject ? "it is smaller, so reject" : "it is larger, so fail to reject"}.` } }
+          why: { [reject ? 1 : 0]: `Rejection region: ${RULE(dir, zs.toFixed(3))}. \\(z = ${S.fmt(z, 2).replace("−", "-")}\\) is ${reject ? "in" : "not in"} it, so ${reject ? "reject" : "fail to reject"}.` } }
       ],
       hand: [
         T`\(H_0: p = ${n(c.p0)}\) versus \(H_a: p ${SYM[dir]} ${n(c.p0)}\).`,
         T`Conditions: random sample; \(np_0 = ${n(nn * c.p0)}\) and \(n(1-p_0) = ${n(nn * (1 - c.p0))}\), both at least 10.`,
-        T`\(\hat p = ${X}/${nn} = ${f4(ph)}\). \(z = \dfrac{${f4(ph)} - ${n(c.p0)}}{\sqrt{${n(c.p0)}(${n(1 - c.p0)})/${nn}}} = \dfrac{${f4(ph - c.p0)}}{${f4(se)}} = ${S.fmt(z, 4).replace("−", "-")} \approx ${zr.toFixed(2)}\).`,
-        dir === "gt" ? T`p-value \(= P(Z \ge ${zr.toFixed(2)}) = 1 - ${f4(left)} = ${f4(pvT)}\).`
-          : dir === "lt" ? T`p-value \(= P(Z \le ${zr.toFixed(2)}) = ${f4(pvT)}\).`
-          : T`p-value \(= 2P(Z \ge ${Math.abs(zr).toFixed(2)}) = 2(1 - ${f4(S.tableArea(Math.abs(z)))}) = ${f4(pvT)}\).`,
-        `${reject ? "p-value ≤ α" : "p-value > α"}: ${reject ? "reject" : "fail to reject"} \\(H_0\\).`,
+        T`\(\hat p = ${X}/${nn} = ${f4(ph)}\). \(z = \dfrac{${f4(ph)} - ${n(c.p0)}}{\sqrt{${n(c.p0)}(${n(1 - c.p0)})/${nn}}} = \dfrac{${f4(ph - c.p0)}}{${f4(se)}} = ${S.fmt(z, 4).replace("−", "-")}\).`,
+        `Critical value: \\(z^*\\) row, ${COL(alpha, dir)}, so \\(z^* = ${zs.toFixed(3)}\\). Reject \\(H_0\\) if ${RULE(dir, zs.toFixed(3))}.`,
+        `\\(z = ${S.fmt(z, 2).replace("−", "-")}\\) is ${reject ? "" : "not "}in the rejection region, so ${reject ? "reject" : "fail to reject"} \\(H_0\\).`,
         `There ${reject ? "is" : "is not"} sufficient evidence at the \\(\\alpha = ${alpha}\\) level that the proportion is ${WORD[dir]} ${n(c.p0)}.`
       ],
-      figure: HandUI.zFig(figShade, { marks: [{ x: Math.max(-3.7, Math.min(3.7, z)), top: "z" }] }),
-      after: Math.abs(z) > 3.49 ? "When |z| is beyond 3.49 the table can't go further: the p-value is essentially 0." : "",
-      ti: `${HandUI.keys("[STAT] [▶] {5:1-PropZTest}")}: p0 = ${n(c.p0)}, x = ${X}, n = ${nn}, prop ${dir === "gt" ? ">" : dir === "lt" ? "<" : "≠"}p0. It reports z = ${S.fmt(z, 4)}, p = ${f4(pvE)}.`,
-      excel: HandUI.xl(dir === "gt" ? `=1-NORM.S.DIST(${f4(z)},TRUE)` : dir === "lt" ? `=NORM.S.DIST(${f4(z)},TRUE)` : `=2*(1-NORM.S.DIST(ABS(${f4(z)}),TRUE))`, f4(pvE))
+      figure: HandUI.zFig(RR_SHADE(dir, zs, 3.8), { marks: [{ x: Math.max(-3.7, Math.min(3.7, z)), top: "z" }] }),
+      after: "The shaded area is the rejection region (total area α). Software also reports a p-value; rejecting when p-value ≤ α gives the same decision.",
+      ti: `${HandUI.keys("[STAT] [▶] {5:1-PropZTest}")}: p0 = ${n(c.p0)}, x = ${X}, n = ${nn}, prop ${dir === "gt" ? ">" : dir === "lt" ? "<" : "≠"}p0. It reports z = ${S.fmt(z, 4)}. ${HandUI.screen(`invNorm(${n(1 - (dir === "ne" ? alpha / 2 : alpha))})`)} = ${zs.toFixed(3)}.`,
+      excel: HandUI.xl(`=NORM.S.INV(${n(1 - (dir === "ne" ? alpha / 2 : alpha))})`, zs.toFixed(3))
     };
   }
 
-  // ---- one-sample t test with a bracketed p-value ----
-  function bracket(tAbs, dfRow, twoSided) {
-    const tails = S.T_TAIL, vals = tails.map(a => S.tTableValue(dfRow, a));
-    const k = twoSided ? 2 : 1;
-    const fmtA = a => S.num(a * k, 4);
-    if (tAbs < vals[0]) return { text: `p-value > ${fmtA(tails[0])}`, lo: tails[0] * k, hi: 1 };
-    for (let i = 0; i < vals.length - 1; i++) if (tAbs >= vals[i] && tAbs < vals[i + 1]) return { text: `${fmtA(tails[i + 1])} < p-value < ${fmtA(tails[i])}`, lo: tails[i + 1] * k, hi: tails[i] * k, i };
-    return { text: `p-value < ${fmtA(tails[tails.length - 1])}`, lo: 0, hi: tails[tails.length - 1] * k };
-  }
-  function allBrackets(dfRow, twoSided) {
-    const tails = S.T_TAIL, k = twoSided ? 2 : 1, out = [`p-value > ${S.num(tails[0] * k, 4)}`];
-    for (let i = 0; i < tails.length - 1; i++) out.push(`${S.num(tails[i + 1] * k, 4)} < p-value < ${S.num(tails[i] * k, 4)}`);
-    out.push(`p-value < ${S.num(tails[tails.length - 1] * k, 4)}`);
-    return out;
-  }
+  // ---- one-sample t test with a critical value from the t-table ----
   const TCTX = [["mean oxygen level in a river", "ppm", 5, [0.1, 0.4], 2], ["mean percent of calories from fat", "%", 30, [5, 9], 2], ["mean weekly pay for entry-level workers", "dollars", 500, [10, 40], 1],
     ["mean fill amount of soda bottles", "mL", 500, [3, 8], 1], ["mean sweetness loss for a diet cola", "points", 0, [0.6, 1.4], 2], ["mean commute time", "minutes", 25, [5, 12], 1]];
   function tTest() {
     const [what, unit, mu0, sr, dec] = R.pick(TCTX), dir = R.pick(["gt", "lt", "ne"]), alpha = R.pick([0.01, 0.05, 0.1]);
-    const df = R.pick([5, 6, 7, 8, 9, 10, 11, 12, 14, 15, 17, 19, 20, 24, 25, 29, 30, 40, 50, 60]), nn = df + 1;
+    const df = R.pick([5, 6, 7, 8, 9, 10, 11, 12, 14, 15, 17, 19, 20, 24, 25, 29, 30, 34, 45, 64, 99, 164]), nn = df + 1;
     const s = S.round(sr[0] + Math.random() * (sr[1] - sr[0]), dec + 1), se = s / Math.sqrt(nn);
     const tTarget = (dir === "lt" ? -1 : dir === "gt" ? 1 : R.pick([-1, 1])) * R.int(30, 450) / 100;
     const xbar = S.round(mu0 + tTarget * se, dec + 2);
-    const t = (xbar - mu0) / se;
-    const pv = dir === "gt" ? 1 - S.pt(t, df) : dir === "lt" ? S.pt(t, df) : 2 * (1 - S.pt(Math.abs(t), df));
-    // the bracket only makes sense when t points in the direction of Ha
-    const sameSide = dir === "ne" || (dir === "gt" ? t > 0 : t < 0);
-    const B = bracket(Math.abs(t), df, dir === "ne");
-    const options = allBrackets(df, dir === "ne");
-    const ansIdx = options.indexOf(B.text);
-    const reject = pv <= alpha;
-    const near = [ansIdx - 1, ansIdx + 1, ansIdx + 2, ansIdx - 2].filter(i => i >= 0 && i < options.length).slice(0, 3);
-    const choiceIdx = R.shuffle([ansIdx, ...near]);
-    const row = S.tTableRow(df), vals = S.T_TAIL.map(a => S.tTableValue(row, a));
-    let rowText;
-    if (B.i != null) rowText = T`In row \(df = ${df}\), \(|t| = ${S.fmt(Math.abs(t), 3)}\) falls between ${vals[B.i].toFixed(3)} (tail ${S.num(S.T_TAIL[B.i], 4)}) and ${vals[B.i + 1].toFixed(3)} (tail ${S.num(S.T_TAIL[B.i + 1], 4)}).`;
-    else if (B.lo === 0) rowText = T`In row \(df = ${df}\), \(|t| = ${S.fmt(Math.abs(t), 3)}\) is beyond the last entry ${vals[vals.length - 1].toFixed(3)} (tail 0.0005).`;
-    else rowText = T`In row \(df = ${df}\), \(|t| = ${S.fmt(Math.abs(t), 3)}\) is below the first entry ${vals[0].toFixed(3)} (tail 0.25).`;
-    if (!sameSide) return tTest();
+    const t = (xbar - mu0) / se, row = S.tTableRow(df), ts = tCrit(df, alpha, dir), reject = IN_RR(t, dir, ts);
+    const tsOther = tCrit(df, alpha, dir === "ne" ? "gt" : "ne"), tsN = S.tTableValue(S.tTableRow(nn), dir === "ne" ? alpha / 2 : alpha), zs = zCrit(alpha, dir);
+    const tMis = [{ value: tsOther, tol: 0.0015, msg: dir === "ne" ? "Two-sided: use column \\(\\alpha/2\\), not \\(\\alpha\\)." : "One-sided: use column \\(\\alpha\\), not \\(\\alpha/2\\)." }, { value: zs, tol: 0.0015, msg: "That is \\(z^*\\). For a mean with \\(s\\), use the row \\(df = n - 1\\)." }];
+    if (Math.abs(tsN - ts) > 0.0005) tMis.push({ value: tsN, tol: 0.0015, msg: "That row is \\(df = n\\). Use \\(df = n - 1\\)." });
     return {
       prompt: `<p>Test whether the ${what} is <strong>${WORD[dir]} ${mu0}</strong> ${unit}. A random sample of ${nn} gives \\(\\bar x = ${n(xbar, dec + 2)}\\) and \\(s = ${n(s)}\\); the data show no extreme skew or outliers. Use \\(\\alpha = ${alpha}\\).</p>`,
       parts: [
         { type: "num", label: "Test statistic \\(t\\) (3 decimals)", answer: t, tol: 0.006, show: S.fmt(t, 3),
           mistakes: [{ value: (xbar - mu0) / s, tol: 0.006, msg: "Divide by the standard error \\(s/\\sqrt n\\), not by \\(s\\)." }, { value: -t, tol: 0.006, msg: "Sign reversed: compute \\(\\bar x - \\mu_0\\)." }] },
         { type: "num", label: "Degrees of freedom", answer: df, tol: 0.01, show: String(df), mistakes: [{ value: nn, msg: "\\(df = n - 1\\)." }] },
-        { type: "choice", label: "p-value from the t table", options: choiceIdx.map(i => options[i]), answer: choiceIdx.indexOf(ansIdx), fixed: true,
-          why: Object.fromEntries(choiceIdx.map((_, j) => [j, rowText + (dir === "ne" ? " Two-sided, so double both tail areas." : "")])) },
+        { type: "num", label: "Critical value \\(t^*\\) from the t-table", answer: ts, tol: 0.0015, show: ts.toFixed(3), mistakes: tMis },
         { type: "choice", label: `Decision at \\(\\alpha = ${alpha}\\)`, options: ["Reject \\(H_0\\)", "Fail to reject \\(H_0\\)"], answer: reject ? 0 : 1, fixed: true,
-          why: { [reject ? 1 : 0]: `From the table, ${B.text}, which is ${reject ? "at most" : "more than"} \\(\\alpha = ${alpha}\\).` } }
+          why: { [reject ? 1 : 0]: `Rejection region: ${RULE(dir, ts.toFixed(3))}. \\(t = ${S.fmt(t, 3).replace("−", "-")}\\) is ${reject ? "in" : "not in"} it.` } }
       ],
       hand: [
         T`\(H_0: \mu = ${mu0}\) versus \(H_a: \mu ${SYM[dir]} ${mu0}\). Conditions: random sample; no extreme skew or outliers.`,
         T`\(t = \dfrac{${n(xbar, dec + 2)} - ${mu0}}{${n(s)}/\sqrt{${nn}}} = \dfrac{${f4(xbar - mu0)}}{${f4(se)}} = ${S.fmt(t, 3).replace("−", "-")}\), with \(df = ${nn} - 1 = ${df}\).`,
-        rowText + (dir === "ne" ? " Two-sided, so double the tail areas." : ""),
-        `So ${B.text.replace("p-value", "the p-value")}. (Software: ${f4(pv)}.)`,
-        `${reject ? "This is at most" : "This is more than"} \\(\\alpha = ${alpha}\\), so ${reject ? "reject" : "fail to reject"} \\(H_0\\). There ${reject ? "is" : "is not"} sufficient evidence at the ${alpha} level that the ${what} is ${WORD[dir]} ${mu0} ${unit}.`
+        `Critical value: row \\(df = ${row}\\)${row !== df ? ` (${df} is not in the table, so use the next smaller row)` : ""}, ${COL(alpha, dir)}: \\(t^* = ${ts.toFixed(3)}\\). Reject \\(H_0\\) if ${RULE(dir, ts.toFixed(3))}.`,
+        `\\(t = ${S.fmt(t, 3).replace("−", "-")}\\) is ${reject ? "" : "not "}in the rejection region, so ${reject ? "reject" : "fail to reject"} \\(H_0\\). There ${reject ? "is" : "is not"} sufficient evidence at the ${alpha} level that the ${what} is ${WORD[dir]} ${mu0} ${unit}.`
       ],
-      figure: HandUI.tFig(df, dir === "gt" ? [[t, 4]] : dir === "lt" ? [[-4, t]] : [[-4, -Math.abs(t)], [Math.abs(t), 4]], { marks: [{ x: Math.max(-3.9, Math.min(3.9, t)), top: "t" }] }),
-      ti: `${HandUI.keys("[STAT] [▶] {2:T-Test}")}, Stats: μ0 = ${mu0}, x̄ = ${n(xbar, dec + 2)}, Sx = ${n(s)}, n = ${nn}. Or ${HandUI.screen(dir === "gt" ? `tcdf(${S.fmt(t, 3)},E99,${df})` : dir === "lt" ? `tcdf(-E99,${S.fmt(t, 3)},${df})` : `2*tcdf(${S.fmt(Math.abs(t), 3)},E99,${df})`)} = ${f4(pv)}`,
-      excel: HandUI.xl(dir === "gt" ? `=1-T.DIST(${S.fmt(t, 3)},${df},TRUE)` : dir === "lt" ? `=T.DIST(${S.fmt(t, 3).replace("−", "-")},${df},TRUE)` : `=T.DIST.2T(${S.fmt(Math.abs(t), 3)},${df})`, f4(pv))
+      figure: HandUI.tFig(df, RR_SHADE(dir, ts, 4), { marks: [{ x: Math.max(-3.9, Math.min(3.9, t)), top: "t" }] }),
+      after: "The shaded area is the rejection region (total area α).",
+      ti: `${HandUI.keys("[STAT] [▶] {2:T-Test}")}, Stats: μ0 = ${mu0}, x̄ = ${n(xbar, dec + 2)}, Sx = ${n(s)}, n = ${nn}; it reports t. ${HandUI.screen(`invT(${n(1 - (dir === "ne" ? alpha / 2 : alpha))},${df})`)} uses the exact df${row !== df ? ", so it differs slightly from the table row" : ""}.`,
+      excel: HandUI.xl(`=T.INV(${n(1 - (dir === "ne" ? alpha / 2 : alpha))},${row})`, ts.toFixed(3))
     };
   }
 
-  // ---- decision and conclusion from a p-value ----
+  // ---- decision and conclusion from the rejection region ----
   function decide() {
     const alpha = R.pick([0.01, 0.05, 0.1]);
-    const pv = R.coin() ? S.round(alpha * R.int(5, 95) / 100, 4) : S.round(alpha + R.int(1, 40) / 100, 4);
-    const reject = pv <= alpha;
     const [par, ctx, v, dir] = R.pick([["p", "proportion of defective chips", "0.02", "gt"], ["\\mu", "mean wait time", "15 minutes", "lt"], ["p", "proportion of voters who support the measure", "0.5", "ne"], ["\\mu", "mean battery life", "40 hours", "gt"]]);
+    const isP = par === "p", nn = isP ? R.pick([200, 400, 500, 800]) : R.pick([10, 13, 16, 21, 26]), df = nn - 1;
+    const c = isP ? zCrit(alpha, dir) : tCrit(df, alpha, dir);
+    const mag = S.round(c + R.pick([-1, 1]) * R.pick([0.12, 0.35, 0.7, 1.1]), 2), sign = dir === "lt" ? -1 : dir === "gt" ? 1 : R.pick([-1, 1]);
+    const ts = S.round(sign * Math.max(0.05, mag), 2), reject = IN_RR(ts, dir, c);
     const opts = [
       `Reject H₀. There is sufficient evidence that the ${ctx} is ${WORD[dir]} ${v}.`,
       `Fail to reject H₀. There is not sufficient evidence that the ${ctx} is ${WORD[dir]} ${v}.`,
@@ -157,10 +133,14 @@
     ];
     const ans = reject ? 0 : 1;
     return {
-      prompt: `<p>A test of \\(H_0: ${par} = \\) ${v} versus \\(H_a: ${par} ${SYM[dir]}\\) ${v} gives a p-value of <strong>${S.num(pv, 4)}</strong>. Using \\(\\alpha = ${alpha}\\), which decision and conclusion are correct?</p>`,
-      parts: [{ type: "choice", label: "Decision and conclusion", options: opts, answer: ans,
-        why: { [1 - ans]: `Compare: ${S.num(pv, 4)} is ${reject ? "at most" : "greater than"} ${alpha}.`, 2: "A test never proves anything; it measures the strength of evidence.", 3: "We never 'accept' H₀. Not finding evidence against it is not proof that it is true." } }],
-      hand: [`p-value ${S.num(pv, 4)} ${reject ? "≤" : ">"} α = ${alpha}, so ${reject ? "reject" : "fail to reject"} \\(H_0\\).`, "State the conclusion about \\(H_a\\), in context, without claiming proof."]
+      prompt: `<p>A test of \\(H_0: ${par} = \\) ${v} versus \\(H_a: ${par} ${SYM[dir]}\\) ${v} uses ${isP ? `a random sample of ${nn} and gives \\(z = ${ts}\\)` : `a random sample of ${nn} (\\(df = ${df}\\)) and gives \\(t = ${ts}\\)`}. Use \\(\\alpha = ${alpha}\\).</p>`,
+      parts: [
+        { type: "num", label: `Critical value \\(${isP ? "z^*" : "t^*"}\\)`, answer: c, tol: 0.0015, show: c.toFixed(3),
+          mistakes: [{ value: isP ? zCrit(alpha, dir === "ne" ? "gt" : "ne") : tCrit(df, alpha, dir === "ne" ? "gt" : "ne"), tol: 0.0015, msg: dir === "ne" ? "Two-sided: use column \\(\\alpha/2\\)." : "One-sided: use column \\(\\alpha\\)." }] },
+        { type: "choice", label: "Decision and conclusion", options: opts, answer: ans,
+          why: { [1 - ans]: `Rejection region: ${RULE(dir, c.toFixed(3))}. The test statistic ${ts} is ${reject ? "in" : "not in"} it.`, 2: "A test never proves anything; it measures the strength of evidence.", 3: "We never 'accept' H₀. Not finding evidence against it is not proof that it is true." } }],
+      hand: [`Critical value: ${isP ? "\\(z^*\\) row" : `row \\(df = ${S.tTableRow(df)}\\)${S.tTableRow(df) !== df ? " (next smaller listed df)" : ""}`}, ${COL(alpha, dir)}, so ${isP ? "\\(z^*\\)" : "\\(t^*\\)"} \\(= ${c.toFixed(3)}\\). Reject \\(H_0\\) if ${RULE(dir, c.toFixed(3))}.`,
+        `The test statistic ${ts} is ${reject ? "" : "not "}in the rejection region, so ${reject ? "reject" : "fail to reject"} \\(H_0\\).`, "State the conclusion about \\(H_a\\), in context, without claiming proof."]
     };
   }
 
@@ -218,26 +198,26 @@
       prompt: `<p>A ${C}% confidence interval for \\(${par}\\) is \\((${n(L)},\\ ${n(U)})\\). Test \\(H_0: ${par} = ${n(v)}\\) versus \\(H_a: ${par} \\ne ${n(v)}\\) at \\(\\alpha = ${alpha}\\).</p>`,
       parts: [
         { type: "choice", label: "Decision", options: ["Reject \\(H_0\\)", "Fail to reject \\(H_0\\)"], answer: inside ? 1 : 0, fixed: true, why: { [inside ? 0 : 1]: `${n(v)} is ${inside ? "inside" : "outside"} the interval, so it ${inside ? "is" : "is not"} a plausible value.` } },
-        { type: "choice", label: "The p-value is", options: [`At most ${alpha}`, `Greater than ${alpha}`], answer: inside ? 1 : 0, fixed: true, why: { [inside ? 0 : 1]: "The decision and the p-value must agree: reject exactly when p-value ≤ α." } }
+        { type: "choice", label: "Will the test statistic fall in the rejection region?", options: ["Yes", "No"], answer: inside ? 1 : 0, fixed: true, why: { [inside ? 0 : 1]: "The test and the interval give the same decision: the TS is in the rejection region exactly when we reject." } }
       ],
-      hand: [`A two-sided test at \\(\\alpha = ${alpha}\\) matches a ${C}% confidence interval (\\(C = 1 - \\alpha\\)).`, `${n(v)} is ${inside ? "inside" : "outside"} \\((${n(L)},\\ ${n(U)})\\), so ${inside ? "fail to reject \\(H_0\\); the p-value is greater than" : "reject \\(H_0\\); the p-value is at most"} ${alpha}.`]
+      hand: [`A two-sided test at \\(\\alpha = ${alpha}\\) matches a ${C}% confidence interval (\\(C = 1 - \\alpha\\)).`, `${n(v)} is ${inside ? "inside" : "outside"} \\((${n(L)},\\ ${n(U)})\\), so ${inside ? "fail to reject \\(H_0\\): the test statistic would not fall in the rejection region" : "reject \\(H_0\\): the test statistic would fall in the rejection region"}.`]
     };
   }
 
   // ---- practical significance ----
   const PRAC = [
-    ["With 2,000 volunteers, a $1.50 headache pill brought relief 6.6 seconds faster on average than a $0.10 pill (p-value 0.045).", 1, "Statistically significant at 0.05, but 6.6 seconds isn't worth $1.40 more per pill."],
-    ["With 50,000 students, a tutoring program raised mean exam scores by 0.2 points out of 100 (p-value < 0.001).", 1, "A tiny difference becomes 'significant' with a huge sample; 0.2 points doesn't matter in practice."],
-    ["In 400 patients, a new drug lowered systolic blood pressure by 15 mm Hg more than placebo (p-value < 0.001).", 0, "The effect is both statistically significant and large enough to matter medically."],
-    ["With 60 trial runs, a new route cut a delivery truck's mean time by 25 minutes per day (p-value 0.002).", 0, "Significant, and 25 minutes a day is a meaningful savings."],
-    ["With 1 million web visitors, a button color raised click rate from 3.10% to 3.12% (p-value 0.01); changing it costs $200,000.", 1, "Statistically significant, but a 0.02-point gain isn't worth the cost."]
+    ["With 2,000 volunteers, a $1.50 headache pill brought relief 6.6 seconds faster on average than a $0.10 pill (the test statistic fell in the rejection region at α = 0.05).", 1, "Statistically significant, but 6.6 seconds isn't worth $1.40 more per pill."],
+    ["With 50,000 students, a tutoring program raised mean exam scores by 0.2 points out of 100 (the test statistic fell far into the rejection region).", 1, "A tiny difference becomes 'significant' with a huge sample; 0.2 points doesn't matter in practice."],
+    ["In 400 patients, a new drug lowered systolic blood pressure by 15 mm Hg more than placebo (the test statistic fell far into the rejection region).", 0, "The effect is both statistically significant and large enough to matter medically."],
+    ["With 60 trial runs, a new route cut a delivery truck's mean time by 25 minutes per day (the test statistic fell in the rejection region at α = 0.05).", 0, "Significant, and 25 minutes a day is a meaningful savings."],
+    ["With 1 million web visitors, a button color raised click rate from 3.10% to 3.12% (the test statistic fell in the rejection region at α = 0.05); changing it costs $200,000.", 1, "Statistically significant, but a 0.02-point gain isn't worth the cost."]
   ];
   function practical() {
     const [txt, ans, why] = R.pick(PRAC);
     return {
       prompt: `<p>${txt}</p><p>Is the result practically significant?</p>`,
       parts: [{ type: "choice", label: "Assessment", options: ["Statistically and practically significant", "Statistically significant but not practically significant"], answer: ans, fixed: true, why: { [1 - ans]: why } }],
-      hand: ["Statistical significance: is the p-value below α? Practical significance: is the size of the difference big enough to matter to the people affected?", why]
+      hand: ["Statistical significance: does the test statistic fall in the rejection region? Practical significance: is the size of the difference big enough to matter to the people affected?", why]
     };
   }
 
@@ -246,7 +226,7 @@
     skills: [
       { id: "m8-hyp", title: "Writing hypotheses", gen: hypotheses },
       { id: "m8-ztest", title: "Test for a proportion (z test)", gen: zTest },
-      { id: "m8-ttest", title: "Test for a mean (t test, table p-value)", gen: tTest },
+      { id: "m8-ttest", title: "Test for a mean (t test, critical value)", gen: tTest },
       { id: "m8-decide", title: "Decision and conclusion", gen: decide },
       { id: "m8-errors", title: "Type I and Type II errors", gen: errors },
       { id: "m8-power", title: "Power and β", gen: power },
