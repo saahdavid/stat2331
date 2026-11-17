@@ -29,7 +29,7 @@ try{
   await page.goto(`${base}/practice.html?module=6`,{waitUntil:'networkidle'});await page.locator('.skill-select').selectOption('m6-xbarprob');await page.getByRole('button',{name:'Show the worked solution',exact:true}).click();await page.locator('.question').screenshot({path:'test-results/worked-solution-phone.png'});
   assert.deepEqual(errors,[]);console.log('PASS: visual captures of populated labs and worked solution, at both widths and themes.');await browser.close();process.exit(0);
  }
- const routes=['index.html',...Array.from({length:8},(_,i)=>`module-${i+1}.html`),'practice.html','exams.html','choose.html','mistakes.html','labs.html','tables.html'];
+ const routes=['index.html',...Array.from({length:8},(_,i)=>`module-${i+1}.html`),'practice.html','exams.html','choose.html','mistakes.html','review.html','labs.html','tables.html'];
  for(const route of routes){await page.goto(`${base}/${route}`,{waitUntil:'networkidle'});await page.waitForFunction(()=>!!window.Course);await page.waitForFunction(()=>window.katex!==undefined);await page.evaluate(()=>Course.renderMath());assert.equal(await page.locator('.math-error').count(),0,route);assert.equal(await page.locator('.math:not([data-rendered])').count(),0,route);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,route+' overflow');console.log('Page:',route);}
  // Stress every generator inside the real browser too.
  const count=await page.evaluate(()=>{let count=0;for(const skills of Object.values(Course.questions))for(const s of skills)for(let i=0;i<300;i++){const q=s.generate();if(/undefined|NaN|Infinity/.test(JSON.stringify(q)))throw Error(s.id);if(q.multi){for(const p of q.parts)if(p.type==='choice'?!(p.answer>=0&&p.answer<p.options.length):!Number.isFinite(p.answer))throw Error(s.id);}else if(q.choices?!q.choices.includes(q.answer):!Number.isFinite(q.answer))throw Error(s.id);count++;}return count;});
@@ -150,7 +150,9 @@ try{
   await page.goto(`${base}/mistakes.html`,{waitUntil:'networkidle'});assert.equal(await page.locator('.mistake-skill').count(),1);assert.equal(await page.locator('.mistake-msgs li').count(),1);
   assert.match(await page.locator('.mistake-actions a').first().getAttribute('href'),/skill=m5-z/);
   await page.locator('#mistakes-clear').click();await page.locator('#mc-yes').click();assert.match(await page.locator('#mistakes-root').innerText(),/Nothing here yet/);}
- console.log('PASS: spaced review and the mistakes page.');
+ {await page.goto(`${base}/review.html#m6`,{waitUntil:'networkidle'});assert.equal(await page.locator('.sheet:visible').count(),1);assert.equal(await page.locator('#m6 .sheet-sec').count(),6);assert.ok(await page.locator('#m6 .formula').count()>=3);
+  await page.locator('#sheet-all').click();assert.equal(await page.locator('.sheet:visible').count(),8);}
+ console.log('PASS: spaced review and the mistakes page, and review sheets.');
  console.log('PASS: mastery persistence, percentage input, and mixed-set miss requeue.');
  await page.goto(`${base}/labs.html`,{waitUntil:'networkidle'});assert.equal(await page.locator('.lab').count(),10);
  for(let i=0;i<10;i++){
