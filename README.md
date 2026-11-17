@@ -15,7 +15,7 @@ Student URL after GitHub Pages is enabled: **https://saahdavid.github.io/stat233
 | 5. Normal & Binomial | Empirical Rule; z scores; normal areas; inverse normal; BINS; exact/cumulative binomial; binomial mean/SD; normal approximation | Building a binomial distribution |
 | 6. Sampling Distributions | p̂ center/spread; minimum n; p̂ probabilities; x̄ probabilities; middle ranges; CLT; n/spread; three distributions/unbiasedness | Sampling distribution of p̂; sample means and CLT |
 | 7. Confidence Intervals | Proportion CI; t* lookup; mean CI; estimate/margin; n for p; n for μ; confidence interpretation; margin changes | Repeated confidence intervals |
-| 8. Hypothesis Testing + Uses & Abuses | Hypotheses; proportion z test; mean t test; critical values and rejection regions; decision/conclusion; Type I/II; power/β; CI decisions/practical significance | p-value under H₀; Type I error and power |
+| 8. Hypothesis Testing + Uses & Abuses | Hypotheses; proportion z test; mean t test; critical values and rejection regions; decision/conclusion; Type I/II; power/β; CI decisions/practical significance | The rejection region; Type I error and power |
 
 Each module contains explanations, highlighted formulas, worked examples, common mistakes, TI-84 checks, Excel formulas, a table of contents, previous/next links, and practice. The normal and t tables have lookup helpers; the reference page also contains a formula sheet.
 
