@@ -112,7 +112,22 @@ fieldset.part{margin-inline:0}
 .rrp-crit{stroke:var(--red);stroke-width:1.6;stroke-dasharray:4 3}.rrp-critlabel{font:700 13px 'Atkinson Hyperlegible',sans-serif;fill:var(--red)}
 .rrp-ts{stroke:var(--blue);stroke-width:2.4}.rrp-tslabel{font:700 14px 'Atkinson Hyperlegible',sans-serif;fill:var(--blue)}
 .rrp-dist{font:italic 16px 'Source Serif 4',Georgia,serif;fill:var(--ink)}.rrp-note{font:12px 'Atkinson Hyperlegible',sans-serif;fill:var(--muted)}
-.rr-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 18px;margin-top:10px}.rr-grid .rr-plot{margin:6px 0}.rr-grid .rrp-note{display:none}.rr-grid figcaption{font-size:13px}
-@media(max-width:720px){.rr-grid{grid-template-columns:1fr}}
+.rr-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:6px 18px;margin-top:10px}.rr-grid .rr-plot{margin:6px 0}.rr-grid .rrp-note{display:none}.rr-grid figcaption{font-size:13px}
+@media(max-width:720px){.rr-grid{grid-template-columns:minmax(0,1fr)}}
 .feedback .rrp,.exam-item .rrp{max-width:560px;margin:8px 0 12px}
-@media(max-width:720px){.rrp .rrp-ticklabel{font-size:20px}.rrp .rrp-critlabel{font-size:22px}.rrp .rrp-tslabel{font-size:24px}.rrp .rrp-dist{font-size:26px}.rrp .rrp-note{display:none}.rrp-curve{stroke-width:3.2}}
+/* Animated rejection region */
+.rr-anim{margin:14px 0;padding:14px 16px;border:1px solid var(--line);border-radius:6px;background:var(--sheet);font-family:'Atkinson Hyperlegible',sans-serif;min-width:0}
+.rr-anim .rrp{max-width:640px;margin:0 auto}
+.rr-controls{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin:6px 0 8px}.rr-controls button{font-size:14px;padding:7px 13px}
+.rr-steps{margin:0;padding-left:24px;font-size:15px;line-height:1.5}.rr-steps li{margin:4px 0;opacity:.35;transition:opacity .3s}.rr-steps li.on{opacity:1}.rr-steps li.now{font-weight:700}
+.rr-plot figcaption{font-weight:700;color:var(--ink);margin:0 0 2px}
+.rrp-shade.rrp-hit{opacity:.9}.rrp-break{stroke:var(--ink);stroke-width:1.6;fill:none}.rrp-arrow{fill:var(--ink)}
+.rrp-region{font:700 13px 'Atkinson Hyperlegible',sans-serif;fill:var(--red)}.rrp-keep{font:700 13px 'Atkinson Hyperlegible',sans-serif;fill:var(--muted)}.rrp-area{font:12px 'Atkinson Hyperlegible',sans-serif;fill:var(--red)}
+.rrp-far{fill:var(--blue)}
+line.rrp-ts{stroke:var(--blue);stroke-width:3}circle.rrp-ts{fill:var(--blue);stroke:none}
+line.rrp-ts-reject{stroke:var(--red)}circle.rrp-ts-reject{fill:var(--red)}line.rrp-ts-keep{stroke:var(--green)}circle.rrp-ts-keep{fill:var(--green)}
+.rrp-badge{stroke-width:1.5}.rrp-badge-reject{fill:var(--red-light);stroke:var(--red)}.rrp-badge-keep{fill:var(--blue-light);stroke:var(--green)}
+.rrp-badgetext{font:700 14px 'Atkinson Hyperlegible',sans-serif;fill:var(--ink)}
+.rr-stage{overflow-x:auto;max-width:100%}
+@media(max-width:720px){.rr-anim{padding:10px}}
+.rr-grid .rr-plot{min-width:0}
