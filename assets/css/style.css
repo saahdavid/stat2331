@@ -92,3 +92,9 @@ fieldset.part{margin-inline:0}
  .exam-bar{position:fixed;top:auto;bottom:0;left:0;right:0;margin:0;border-radius:0;border-width:1px 0 0;padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px))}
  .exam-bar>div:first-child{display:none}.exam-bar-right{width:100%;justify-content:space-between}.exam-bar .primary{width:auto}
  .exam-root:has(.exam-bar){padding-bottom:70px}.exam-score{margin-left:0}}
+/* Feedback box */
+.site-feedback{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px 28px;margin:56px 0 8px;padding:22px 24px;border:1px dashed var(--muted);border-radius:7px;background:var(--sheet)}
+.site-feedback-text{flex:1 1 380px;min-width:0}.site-feedback h2{font-size:22px;margin:0 0 6px}.site-feedback p{margin:0 0 8px;font-size:15px}.site-feedback p:last-child{margin:0}
+.site-feedback code{overflow-wrap:anywhere}.fb-copy{min-height:0;padding:2px 9px;font-size:13px}
+.site-feedback .fb-link{flex:none}
+@media print{.site-feedback{display:none}}

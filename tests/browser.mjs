@@ -88,6 +88,15 @@ try{
  assert.ok(await page.locator('.exam-timer').isVisible());await page.evaluate(()=>{Course.exams.state.deadline=Date.now()-1;});
  await page.waitForSelector('.exam-timeup',{timeout:5000});
  console.log(`PASS: ${examRuns} practice exams taken right and wrong; partial-credit scoring, self-grading, confirmation, timer, history.`);
+
+ // Feedback box on every page links to the form and names where the student is.
+ for(const route of ['index.html','module-3.html','practice.html?module=6','exams.html','labs.html','tables.html']){
+  await page.goto(`${base}/${route}`,{waitUntil:'networkidle'});
+  assert.match(await page.locator('.site-feedback .fb-link').getAttribute('href'),/^https:\/\/(forms\.gle|docs\.google\.com\/forms)\//);
+  await page.locator('.site-feedback').scrollIntoViewIfNeeded();await page.locator('.site-feedback').hover();
+  const ref=await page.locator('.fb-ref').innerText();assert.ok(ref.length>3&&!/undefined/.test(ref),`${route} feedback reference`);
+  if(route.startsWith('practice'))assert.match(ref,/Module 6, /);}
+ console.log('PASS: feedback box on every page with a page reference.');
  console.log('PASS: mastery persistence, percentage input, and mixed-set miss requeue.');
  await page.goto(`${base}/labs.html`,{waitUntil:'networkidle'});assert.equal(await page.locator('.lab').count(),10);
  for(let i=0;i<10;i++){
