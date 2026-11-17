@@ -31,41 +31,13 @@
     stop(); state = null;
     const h = history();
     const stat = id => { const a = h.attempts.filter(x => x.exam === id); if (!a.length) return 'Not attempted yet'; const best = Math.max(...a.map(x => x.pct)); return `${a.length} attempt${a.length > 1 ? 's' : ''} · best ${best}%`; };
-    const card = (ex, wide) => { const c = counts(ex); return `<article class="exam-card ${wide ? 'wide' : ''}"><div class="eyebrow">${ex.sub}</div><h2>${ex.title}</h2><p>${c.mc} multiple choice · ${c.fr} free response · ${maxPts(ex)} points · suggested ${ex.minutes >= 60 ? ex.minutes / 60 + ' hours' : ex.minutes + ' minutes'}</p><p class="small muted exam-stat">${stat(ex.id)}</p><div class="answer-row"><button class="primary" data-start="${ex.id}">Start ${ex.id === 'final' ? 'the final' : 'quiz'}</button><button data-print="${ex.id}">Printable version</button></div></article>`; };
+    const card = (ex, wide) => { const c = counts(ex); return `<article class="exam-card ${wide ? 'wide' : ''}"><div class="eyebrow">${ex.sub}</div><h2>${ex.title}</h2><p>${c.mc} multiple choice · ${c.fr} free response · ${maxPts(ex)} points · suggested ${ex.minutes >= 60 ? ex.minutes / 60 + ' hours' : ex.minutes + ' minutes'}</p><p class="small muted exam-stat">${stat(ex.id)}</p><button class="primary" data-start="${ex.id}">Start ${ex.id === 'final' ? 'the final' : 'quiz'}</button></article>`; };
     host.innerHTML = `<div class="page-intro"><div class="eyebrow">Practice exams</div><h1>Rehearse exam day.</h1><p>Answer every question first, then submit to see your score. Each attempt is a new version with fresh numbers, so you can retake as often as you like.</p></div>
     <div class="exam-timing"><label class="exam-check"><input type="checkbox" id="exam-timed"> Time me</label><span class="small muted">A countdown uses the suggested time and submits automatically when it reaches zero.</span></div>
     <div class="exam-grid">${card(EXAMS.final, true)}${[1, 2, 3, 4, 5, 6, 7, 8].map(m => card(EXAMS['m' + m])).join('')}</div>
     <section class="exam-how"><h2>How scoring works</h2><div class="exam-how-grid"><div><h3>Multiple choice · 4 points each</h3><p>The best answer earns 4. Some other choices earn partial credit: <strong>2</strong> for a near miss (the right idea reversed, or one slip), <strong>1</strong> for partial understanding, <strong>0</strong> otherwise. After you submit, every choice is explained.</p></div><div><h3>Free response · 8 points each</h3><p>Your computation steps are checked automatically (4 points). Then you score your written answer yourself with the rubric (4 points): both keys earn 4, one key earns 2, accurate but incomplete earns 1.</p></div></div><p class="small muted">Work on paper with your calculator and the <a href="tables.html">tables</a>, just as on the exam. Results stay in this browser.</p></section>`;
     host.querySelectorAll('[data-start]').forEach(b => b.addEventListener('click', () => start(b.dataset.start, host.querySelector('#exam-timed').checked)));
-    host.querySelectorAll('[data-print]').forEach(b => b.addEventListener('click', () => printable(b.dataset.print)));
     window.scrollTo(0, 0);
-  }
-
-  /* ---------- printable version ---------- */
-  function printable(id) {
-    stop(); state = null;
-    const ex = EXAMS[id], items = makeItems(ex), code = Math.random().toString(36).slice(2, 6).toUpperCase(), c = counts(ex);
-    const qHtml = (it, i) => {
-      const q = it.q, pts = it.kind === 'mc' ? '4 points' : '8 points';
-      if (it.kind === 'mc') return `<li class="pq"><div class="pq-head">Question ${i + 1} <span>${pts}</span></div><div class="exam-stem">${T(q.stem)}</div><ol class="pq-options" type="A">${q.shown.map(o => `<li>${T(o.t)}</li>`).join('')}</ol></li>`;
-      return `<li class="pq pq-fr"><div class="pq-head">Question ${i + 1} <span>${pts} · show your work</span></div><div class="exam-stem">${T(q.stem)}</div><ol class="pq-parts">${q.parts.map(p => `<li>${T(p.label)}${p.type === 'choice' ? `<ol class="pq-options" type="A">${p.options.map(o => `<li>${T(o)}</li>`).join('')}</ol>` : '<div class="pq-blank"></div>'}</li>`).join('')}<li>${T(q.written.prompt)}<div class="pq-lines"></div></li></ol></li>`;
-    };
-    const keyHtml = (it, i) => {
-      const q = it.q;
-      if (it.kind === 'mc') { const best = q.shown.findIndex(o => o.tier === 4); return `<li class="pk"><strong>${i + 1}. ${LET[best]}</strong> <span class="pk-tiers">${q.shown.map((o, k) => `${LET[k]}&nbsp;${o.tier}`).join(' · ')}</span><div class="small">${T(q.shown[best].why)}</div></li>`; }
-      return `<li class="pk"><strong>${i + 1}. Free response</strong><ol class="pk-steps">${q.parts.map(p => `<li>${T(p.label)} <strong>${p.type === 'choice' ? T(p.options[p.answer]) : (p.show || Number(Number(p.answer).toFixed(4)).toString())}</strong></li>`).join('')}</ol><div class="small"><b>Worked solution.</b> ${q.solution.map(s => T(s)).join(' ')}</div>${(q.figure || '').replace('class="rr-anim"', 'class="rr-static"')}<div class="small"><b>Written answer rubric.</b> Key 1: ${T(q.written.keys[0])} Key 2: ${T(q.written.keys[1])} Score 4 for both keys, 2 for one key, 1 for accurate but incomplete, 0 otherwise.</div><div class="small"><b>Model answer.</b> ${T(q.written.model)}</div></li>`;
-    };
-    host.innerHTML = `<div class="print-controls no-print"><div class="page-intro"><div class="eyebrow">Printable version</div><h1>${ex.title}, version ${code}</h1><p>Print this version to practice on paper, then check your work with the answer key, which prints on its own pages at the end. Each new version has fresh numbers.</p></div><div class="answer-row"><button class="primary" id="print-go">Print</button><label class="exam-check"><input type="checkbox" id="print-key" checked> Include the answer key</label><button id="print-new">New version</button><button id="print-back">All practice exams</button></div><p class="small muted">To save a PDF, choose “Save as PDF” as the printer.</p></div>
-    <article class="print-exam"><header class="print-head"><div><strong>STAT 2331 · ${ex.title}</strong><br><span class="small">${ex.sub} · version ${code}</span></div><div class="print-name">Name ____________________________</div></header>
-    <p class="small">${c.mc} multiple-choice questions (4 points each; some wrong choices earn partial credit) and ${c.fr} free-response questions (8 points each). ${maxPts(ex)} points. Suggested time: ${ex.minutes >= 60 ? ex.minutes / 60 + ' hours' : ex.minutes + ' minutes'}. Use a calculator and the normal and t tables.</p>
-    <ol class="print-qs">${items.map(qHtml).join('')}</ol></article>
-    <article class="print-key"><header class="print-head"><div><strong>Answer key · ${ex.title}</strong><br><span class="small">version ${code}</span></div></header><p class="small">Multiple choice shows the 4-point answer, then the points each letter earns, then why the best answer is right.</p><ol class="pk-list">${items.map(keyHtml).join('')}</ol></article>`;
-    const keyBox = host.querySelector('#print-key'), keyEl = host.querySelector('.print-key');
-    keyBox.onchange = () => keyEl.classList.toggle('no-print', !keyBox.checked);
-    host.querySelector('#print-go').onclick = () => window.print();
-    host.querySelector('#print-new').onclick = () => printable(id);
-    host.querySelector('#print-back').onclick = () => menu();
-    C.renderMath(host); window.scrollTo(0, 0);
   }
 
   /* ---------- taking ---------- */
@@ -232,7 +204,7 @@
   function review() {
     const s = state; host.oninput = host.onchange = null;
     s.items.forEach(it => { if (it.kind === 'fr' && !it.g.written.trim()) it.self = 0; });
-    host.innerHTML = `<div class="page-intro"><div class="eyebrow">${s.ex.title} · results</div><h1 class="exam-total"></h1><p class="exam-summary"></p>${s.timeUp ? '<p class="exam-timeup"><strong>Time is up.</strong> Your exam was submitted automatically.</p>' : ''}<div class="answer-row"><button class="primary" data-action="retake">Take a new version</button><button data-action="menu">All practice exams</button></div></div>
+    host.innerHTML = `<div class="print-only print-head"><div><strong>STAT 2331 · ${s.ex.title} · results</strong><br><span class="small">${new Date().toLocaleString()}</span></div><div>Name ____________________________</div></div><div class="page-intro"><div class="eyebrow">${s.ex.title} · results</div><h1 class="exam-total"></h1><p class="exam-summary"></p>${s.timeUp ? '<p class="exam-timeup"><strong>Time is up.</strong> Your exam was submitted automatically.</p>' : ''}<div class="answer-row"><button class="primary" data-action="retake">Take a new version</button><button data-action="menu">All practice exams</button><button data-action="print">Print my results</button></div><p class="small muted no-print">Printing includes your score, the study plan, every question with your answer, and all the feedback. Score your written answers first so the total is complete.</p></div>
     <section class="exam-plan tip"></section>
     <section class="exam-breakdown"><h2>By module</h2><div class="table-scroll"><table><thead><tr><th>Module</th><th>Points</th><th>Score</th><th></th></tr></thead><tbody class="exam-bm"></tbody></table></div></section>
     <ol class="exam-items">${s.items.map(reviewItem).join('')}</ol>`;
@@ -240,6 +212,7 @@
       const b = e.target.closest('button'); if (!b) return;
       if (b.dataset.action === 'retake') start(s.ex.id, s.timed);
       if (b.dataset.action === 'menu') menu();
+      if (b.dataset.action === 'print') { host.querySelectorAll('.exam-items details').forEach(d => d.open = true); window.print(); }
       if (b.dataset.quiz) start(b.dataset.quiz, s.timed);
       if (b.dataset.self != null) { const it = s.items[Number(b.dataset.self)]; it.self = Number(b.dataset.v); updateScores(); record(); }
     };

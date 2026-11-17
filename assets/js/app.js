@@ -4,6 +4,7 @@
  const storage={read(key,fallback){try{return JSON.parse(localStorage.getItem(key))??fallback;}catch{return fallback;}},write(key,v){try{localStorage.setItem(key,JSON.stringify(v));return true;}catch{return false;}}};
  Course.storage=storage;
  Course.progress=()=>storage.read('stat2331-progress-v1',{});
+ Course.tex=Course.tex||(s=>s==null?s:String(s).replace(/\\\[([\s\S]*?)\\\]/g,(m,x)=>`<span class="math display">${x}</span>`).replace(/\\\(([\s\S]*?)\\\)/g,(m,x)=>`<span class="math">${x}</span>`));
  Course.mistakes={key:'stat2331-mistakes-v1',read(){return storage.read(this.key,[]);},log(e){const all=this.read();all.push(Object.assign({at:Date.now()},e));storage.write(this.key,all.slice(-300));},clear(){storage.write(this.key,[]);}};
  Course.review={DAY:864e5,isDue:v=>!!(v&&v.mastered&&v.due&&v.due<=Date.now())};
  {const p=storage.read('stat2331-progress-v1',{});let ch=false;for(const v of Object.values(p))if(v&&v.mastered&&!v.due){v.interval=3;v.due=Date.now()+3*864e5;ch=true;}if(ch)storage.write('stat2331-progress-v1',p);}

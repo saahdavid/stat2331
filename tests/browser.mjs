@@ -30,7 +30,7 @@ try{
   assert.deepEqual(errors,[]);console.log('PASS: visual captures of populated labs and worked solution, at both widths and themes.');await browser.close();process.exit(0);
  }
  const routes=['index.html',...Array.from({length:8},(_,i)=>`module-${i+1}.html`),'practice.html','exams.html','choose.html','mistakes.html','review.html','search.html','glossary.html','labs.html','tables.html'];
- for(const route of routes){await page.goto(`${base}/${route}`,{waitUntil:'networkidle'});await page.waitForFunction(()=>!!window.Course);await page.waitForFunction(()=>window.katex!==undefined);await page.evaluate(()=>Course.renderMath());assert.equal(await page.locator('.math-error').count(),0,route);assert.equal(await page.locator('.math:not([data-rendered])').count(),0,route);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,route+' overflow');console.log('Page:',route);}
+ for(const route of routes){await page.goto(`${base}/${route}`,{waitUntil:'networkidle'});await page.waitForFunction(()=>!!window.Course);await page.waitForFunction(()=>window.katex!==undefined);await page.evaluate(()=>Course.renderMath());assert.equal(await page.locator('.math-error').count(),0,route);assert.equal(await page.evaluate(()=>/\\\(|\\\[/.test(document.body.innerText)),false,route+' raw TeX');assert.equal(await page.locator('.math:not([data-rendered])').count(),0,route);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,route+' overflow');console.log('Page:',route);}
  // Stress every generator inside the real browser too.
  const count=await page.evaluate(()=>{let count=0;for(const skills of Object.values(Course.questions))for(const s of skills)for(let i=0;i<300;i++){const q=s.generate();if(/undefined|NaN|Infinity/.test(JSON.stringify(q)))throw Error(s.id);if(q.multi){for(const p of q.parts)if(p.type==='choice'?!(p.answer>=0&&p.answer<p.options.length):!Number.isFinite(p.answer))throw Error(s.id);}else if(q.choices?!q.choices.includes(q.answer):!Number.isFinite(q.answer))throw Error(s.id);count++;}return count;});
  console.log('Browser-generated questions:',count);
@@ -90,9 +90,10 @@ try{
  {await page.goto(`${base}/exams.html`,{waitUntil:'networkidle'});await page.evaluate(()=>{Course.exams.start('final',false);Course.exams.submit(false);});
   assert.equal(await page.locator('.exam-plan h2').innerText(),'What to study next');assert.equal(await page.locator('.study-list > li').count(),3);
   await page.locator('[data-quiz]').first().click();assert.match(await page.locator('.exam-bar strong').innerText(),/Module \d quiz/);await page.evaluate(()=>{Course.exams.submit(false);});}
- {await page.goto(`${base}/exams.html`,{waitUntil:'networkidle'});await page.locator('[data-print="final"]').click();
-  assert.equal(await page.locator('.print-exam .pq').count(),29);assert.equal(await page.locator('.print-key .pk').count(),29);assert.equal(await page.locator('.print-key .rr-anim').count(),0);
-  await page.locator('#print-key').uncheck();assert.ok(await page.locator('.print-key').evaluate(e=>e.classList.contains('no-print')));}
+ {await page.goto(`${base}/exams.html`,{waitUntil:'networkidle'});await page.evaluate(()=>Course.exams.start('final',false));
+  assert.equal(await page.evaluate(()=>/\\\(|\\\[/.test(document.querySelector('#exam-root').innerText)),false,'raw TeX while taking an exam');
+  await page.evaluate(()=>Course.exams.submit(false));assert.equal(await page.evaluate(()=>/\\\(|\\\[/.test(document.querySelector('#exam-root').innerText)),false,'raw TeX in exam results');
+  assert.equal(await page.locator('[data-action=print]').count(),1);assert.equal(await page.locator('[data-print]').count(),0);}
  console.log(`PASS: ${examRuns} practice exams taken right and wrong; partial-credit scoring, self-grading, confirmation, timer, history.`);
 
  // Feedback box on every page links to the form and names where the student is.
@@ -147,7 +148,7 @@ try{
   const v=await page.evaluate(()=>{const P=Course.practiceInstances[0];const s=P.skill;s.generate=s.sources.original;P.render();const m=P.q.mistakes.find(m=>Number.isFinite(m.value));return m&&m.value;});
   assert.ok(Number.isFinite(v),'m5-z has a diagnosable mistake');await page.locator('.question input[name=answer]').fill(String(v));await page.getByRole('button',{name:'Check my answer',exact:true}).click();
   const log=await page.evaluate(()=>Course.mistakes.read());assert.equal(log.length,1);assert.equal(log[0].skill,'m5-z');assert.equal(log[0].msgs.length,1);
-  await page.goto(`${base}/mistakes.html`,{waitUntil:'networkidle'});assert.equal(await page.locator('.mistake-skill').count(),1);assert.equal(await page.locator('.mistake-msgs li').count(),1);
+  await page.goto(`${base}/mistakes.html`,{waitUntil:'networkidle'});assert.equal(await page.locator('.mistake-skill').count(),1);assert.equal(await page.evaluate(()=>/\\\(|\\\[/.test(document.body.innerText)),false,'raw TeX on mistakes page');assert.equal(await page.locator('.mistake-msgs li').count(),1);
   assert.match(await page.locator('.mistake-actions a').first().getAttribute('href'),/skill=m5-z/);
   await page.locator('#mistakes-clear').click();await page.locator('#mc-yes').click();assert.match(await page.locator('#mistakes-root').innerText(),/Nothing here yet/);}
  {await page.goto(`${base}/review.html#m6`,{waitUntil:'networkidle'});assert.equal(await page.locator('.sheet:visible').count(),1);assert.equal(await page.locator('#m6 .sheet-sec').count(),6);assert.ok(await page.locator('#m6 .formula').count()>=3);
