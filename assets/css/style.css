@@ -142,3 +142,25 @@ line.rrp-ts-reject{stroke:var(--red)}circle.rrp-ts-reject{fill:var(--red)}line.r
 .reset-confirm{border:2px solid var(--red);background:var(--red-light)}.reset-confirm p,.restore-banner p{margin:0 0 12px}
 .restore-banner{border:2px solid var(--blue);background:var(--blue-light)}.restore-banner p:last-child{margin:0}
 button.danger{background:var(--red);border-color:var(--red);color:#fff}
+
+/* Step-by-step hints */
+.hint-box{margin:16px 0 0;padding:14px 18px;border:1px dashed var(--blue);border-radius:6px;background:var(--blue-light)}.hint-box strong{color:var(--blue)}.hint-box ol{margin:8px 0}.hint-box li{margin:4px 0}.hint-box p{margin:6px 0 0}
+
+/* Which-method guide */
+.choose-section{margin:34px 0}.choose-section>h2{font-size:28px}
+.chooser-steps{list-style:none;padding:0;margin:0;display:grid;gap:14px}
+.chooser-q fieldset{border:1px solid var(--line);border-radius:6px;padding:16px 18px;margin:0;background:var(--sheet);min-width:0}
+.chooser-q legend{font-weight:700;font-size:18px;padding:0 4px}
+.chooser-opts,.drill-opts{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.chooser-opts button,.drill-opts button{text-align:left;font-size:15px;line-height:1.4;padding:10px 14px;max-width:100%;white-space:normal}
+.chooser-opts button[aria-pressed=true],.drill-opts button[aria-pressed=true]{background:var(--navy);color:var(--paper);border-color:var(--navy)}
+.chooser-note{margin:10px 0 0;color:var(--blue)}
+.chooser-q.done fieldset{border-color:var(--blue)}
+.chooser-result{margin-top:16px;padding:20px 22px;border:2px solid var(--navy);border-radius:7px;background:var(--sheet)}.chooser-result h3{font-size:26px;margin:2px 0 10px}
+.chooser-facts{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:6px 14px;margin:12px 0;font-size:15px}.chooser-facts dt{font-weight:700}.chooser-facts dd{margin:0;min-width:0}
+.link-button{background:none;border:0;padding:0;color:var(--blue);text-decoration:underline;font:inherit;cursor:pointer;min-height:0}
+.choose-table td{vertical-align:top;font-size:15px}.choose-table td:nth-child(2){white-space:nowrap}
+.drill-text{font-size:19px;line-height:1.55;margin:8px 0 12px}.drill-group{border:0;padding:0;margin:10px 0 0;min-width:0}
+@media(max-width:640px){.chooser-facts{grid-template-columns:1fr}.chooser-facts dt{margin-top:6px}}
+.table-scroll{position:relative}
+.choose-table{min-width:880px}.choose-table td:not(:nth-child(2)){min-width:140px}

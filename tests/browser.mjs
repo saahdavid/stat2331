@@ -29,7 +29,7 @@ try{
   await page.goto(`${base}/practice.html?module=6`,{waitUntil:'networkidle'});await page.locator('.skill-select').selectOption('m6-xbarprob');await page.getByRole('button',{name:'Show the worked solution',exact:true}).click();await page.locator('.question').screenshot({path:'test-results/worked-solution-phone.png'});
   assert.deepEqual(errors,[]);console.log('PASS: visual captures of populated labs and worked solution, at both widths and themes.');await browser.close();process.exit(0);
  }
- const routes=['index.html',...Array.from({length:8},(_,i)=>`module-${i+1}.html`),'practice.html','exams.html','labs.html','tables.html'];
+ const routes=['index.html',...Array.from({length:8},(_,i)=>`module-${i+1}.html`),'practice.html','exams.html','choose.html','labs.html','tables.html'];
  for(const route of routes){await page.goto(`${base}/${route}`,{waitUntil:'networkidle'});await page.waitForFunction(()=>!!window.Course);await page.waitForFunction(()=>window.katex!==undefined);await page.evaluate(()=>Course.renderMath());assert.equal(await page.locator('.math-error').count(),0,route);assert.equal(await page.locator('.math:not([data-rendered])').count(),0,route);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,route+' overflow');console.log('Page:',route);}
  // Stress every generator inside the real browser too.
  const count=await page.evaluate(()=>{let count=0;for(const skills of Object.values(Course.questions))for(const s of skills)for(let i=0;i<300;i++){const q=s.generate();if(/undefined|NaN|Infinity/.test(JSON.stringify(q)))throw Error(s.id);if(q.multi){for(const p of q.parts)if(p.type==='choice'?!(p.answer>=0&&p.answer<p.options.length):!Number.isFinite(p.answer))throw Error(s.id);}else if(q.choices?!q.choices.includes(q.answer):!Number.isFinite(q.answer))throw Error(s.id);count++;}return count;});
@@ -101,7 +101,7 @@ try{
 
  // Math written as plain text in the notes is typeset (no stray p̂, x̄, √, ≤, subscripts left in prose).
  for(let m=1;m<=8;m++){await page.goto(`${base}/module-${m}.html`,{waitUntil:'networkidle'});
-  const left=await page.evaluate(()=>{const RX=/p̂|x̄|ŷ|[μσ√≤≥₀₁ₐ²]/;const out=[];const w=document.createTreeWalker(document.querySelector('main'),NodeFilter.SHOW_TEXT);let n;while(n=w.nextNode()){const el=n.parentElement;if(el.closest('.katex,svg,code,kbd,.screen,.xl,.check,[data-lab],button,select,.rr-anim'))continue;if(RX.test(n.nodeValue))out.push(n.nodeValue.trim().slice(0,60));}return out;});
+  const left=await page.evaluate(()=>{const RX=/p̂|x̄|ŷ|[μσ√≤≥₀₁ₐ²]/;const out=[];const w=document.createTreeWalker(document.querySelector('main'),NodeFilter.SHOW_TEXT);let n;while(n=w.nextNode()){const el=n.parentElement;if(el.closest('.katex,svg,code,kbd,.screen,.xl,.check,[data-lab],button,select,.rr-anim,.eyebrow'))continue;if(RX.test(n.nodeValue))out.push(n.nodeValue.trim().slice(0,60));}return out;});
   assert.deepEqual(left,[],`module ${m} has untypeset math`);assert.equal(await page.locator('.math-error').count(),0);}
  console.log('PASS: inline math typeset in all module notes.');
 
@@ -116,6 +116,18 @@ try{
   await pB.locator('#reset-progress').click();await pB.locator('#reset-yes').click();assert.equal(await pB.textContent('#mastery-total'),'0 of 64 skills mastered');
   await ctxA.close();await ctxB.close();}
  console.log('PASS: progress ring and progress links between browsers.');
+
+ // Hints reveal one step at a time; a hinted correct answer does not grow the streak.
+ {await page.goto(`${base}/practice.html?module=5`,{waitUntil:'networkidle'});await page.evaluate(()=>localStorage.removeItem('stat2331-progress-v1'));await page.reload({waitUntil:'networkidle'});
+  await page.evaluate(()=>{const P=Course.practiceInstances[0];const s=P.skills.find(s=>s.id==='m5-z');s.generate=s.sources.original;P.skill=s;P.render();});
+  await page.getByRole('button',{name:'Show a hint'}).click();assert.equal(await page.locator('.hint-box li').count(),1);
+  await fill(page,true);await page.getByRole('button',{name:'Check my answer',exact:true}).click();
+  assert.match(await page.locator('.feedback p').first().innerText(),/with a hint/);assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('stat2331-progress-v1'))['m5-z'].streak),0);}
+ // Method guide: three answers give a method; the drill grades a choice.
+ {await page.goto(`${base}/choose.html`,{waitUntil:'networkidle'});await page.locator('#chooser [data-v="cat"]').click();await page.locator('#chooser [data-v="test"]').click();await page.locator('#chooser [data-v="ne"]').click();
+  assert.match(await page.locator('.chooser-result h3').innerText(),/^Hypothesis test for a proportion/);
+  await page.locator('[data-m="pci"]').click();await page.locator('[data-check]').click();assert.equal(await page.locator('.drill-fb .feedback').count(),1);}
+ console.log('PASS: hints and the method guide.');
  console.log('PASS: mastery persistence, percentage input, and mixed-set miss requeue.');
  await page.goto(`${base}/labs.html`,{waitUntil:'networkidle'});assert.equal(await page.locator('.lab').count(),10);
  for(let i=0;i<10;i++){

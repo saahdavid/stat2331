@@ -74,6 +74,7 @@
         if (IDENT[w]) { out.push({ k: 'ident', v: w, tex: IDENT[w], strong: true, attached: REL.has(s[j]) || REL.has(s[i - 1]) }); i = j; continue; }
         out.push({ k: 'word', v: w }); i = j; continue;
       }
+      if (ch === '·' && /\s/.test(s[i - 1] || '') && /\s/.test(s[i + 1] || '')) { out.push({ k: 'brk', v: ch }); i++; continue; }
       if (SUP[ch]) { let sup = ''; let j = i; while (SUP[s[j]]) { sup += SUP[s[j]]; j++; } out.push({ k: 'op', v: s.slice(i, j), tex: `^{${sup}}`, strong: true, sup: true }); i = j; continue; }
       if (OPS[ch] !== undefined) { out.push({ k: 'op', v: ch, tex: OPS[ch], strong: STRONG_OPS.has(ch) || (ch === '*' && /[A-Za-z]/.test(s[i - 1] || '')) }); i++; continue; }
       out.push({ k: 'brk', v: ch }); i++;
@@ -193,7 +194,7 @@
   }
 
   /* ---------- DOM ---------- */
-  const SKIP = '.katex,.math,code,pre,kbd,.screen,.xl,.check,script,style,svg,textarea,input,select,option,button,.exam-yours,[data-lab],.no-mathify,noscript';
+  const SKIP = '.katex,.math,code,pre,kbd,.screen,.xl,.check,script,style,svg,textarea,input,select,option,button,.exam-yours,.lab-stage,.lab-detail,.eyebrow,.skill-list,.no-mathify,noscript';
   const QUICK = /[̂̄ŷȳμσαβΦΣ√≤≥≠≈×²³₀₁₂ₐ]|[=<>+−\/^]|\bQ[13]\b|\bp-value|\b[A-Za-z]\b/;
   function scan(el) {
     if (!el || !root.document) return;

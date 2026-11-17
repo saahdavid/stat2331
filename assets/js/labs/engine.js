@@ -1,5 +1,6 @@
 (function(){
  'use strict';const S=Stats,E=Course.escape;
+ const setMath=(el,html)=>{if(!el||el.__h===html)return;el.__h=html;el.innerHTML=html;if(window.katex&&window.Course&&Course.renderMath)Course.renderMath(el);};
  const F=(v,d=3)=>Number.isFinite(v)?Number(v.toFixed(d)).toString():'—';
  const text=(x,y,s,extra='')=>`<text x="${x}" y="${y}" ${extra}>${E(s)}</text>`;
  const line=(x1,y1,x2,y2,cls='axis',extra='')=>`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" class="${cls}" ${extra}/>`;
@@ -38,8 +39,8 @@
    }if(run===this.run){this.playing=false;this.busy=false;this.phase='idle';this.render();}}
   wait(ms){return new Promise(resolve=>setTimeout(resolve,Math.max(12,ms/(this.speed*.5+.5))));}
   render(){const c=this.c,result=c.draw(this);this.el.querySelector('svg').innerHTML=result;this.el.querySelector('.lab-status').textContent=c.status?.(this)||`${this.records.length} repetitions. ${this.phase==='draw'?'1. Draw the sample.':this.phase==='compute'?'2. Calculate the statistic.':this.phase==='drop'?'3. Place the result on the plot.':'Ready to draw the next sample.'}`;
-   this.el.querySelector('.lab-readout').innerHTML=(c.metrics?.(this)||[]).map(([label,value])=>`<div class="metric">${E(label)}<b>${E(value)}</b></div>`).join('');
-   this.el.querySelector('.lab-warning').textContent=c.warning?.(this)||'';this.el.querySelector('.lab-theory').innerHTML=c.theory(this);this.el.querySelector('[data-do=play]').textContent=this.busy?'Pause':'Play';this.el.querySelector('[data-do=play]').setAttribute('aria-pressed',String(this.busy));this.el.querySelectorAll('[data-do]').forEach(b=>{b.disabled=this.busy&&!['play','reset'].includes(b.dataset.do);});this.el.querySelectorAll('[data-param]').forEach(el=>el.disabled=this.busy);Course.renderMath(this.el);}
+   setMath(this.el.querySelector('.lab-readout'),(c.metrics?.(this)||[]).map(([label,value])=>`<div class="metric">${E(label)}<b>${E(value)}</b></div>`).join(''));
+   this.el.querySelector('.lab-warning').textContent=c.warning?.(this)||'';setMath(this.el.querySelector('.lab-theory'),c.theory(this));this.el.querySelector('[data-do=play]').textContent=this.busy?'Pause':'Play';this.el.querySelector('[data-do=play]').setAttribute('aria-pressed',String(this.busy));this.el.querySelectorAll('[data-do]').forEach(b=>{b.disabled=this.busy&&!['play','reset'].includes(b.dataset.do);});this.el.querySelectorAll('[data-param]').forEach(el=>el.disabled=this.busy);Course.renderMath(this.el);}
  }
  Course.Lab={F,text,line,circle,scale,axis,histogram,tokens,rngNormal,binomial,Lab};
  Course.labInstances=[];document.addEventListener('DOMContentLoaded',()=>{document.querySelectorAll('[data-lab]').forEach(el=>{const config=Course.labs[el.dataset.lab];if(config)Course.labInstances.push(new Lab(el,config));});});
