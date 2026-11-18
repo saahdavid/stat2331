@@ -6,6 +6,7 @@
   'use strict';
   const FORM = 'https://docs.google.com/forms/d/e/1FAIpQLSeSijkXuPol5U9dj9uTeYE-F4o7LXZ5-W-gqro3rDJ1IYRf9g/viewform';
   const ENTRY = '1531774866';
+  if (window.Course) window.Course.askLink = text => `${FORM}?usp=pp_url&entry.${ENTRY}=${encodeURIComponent(text)}`;
   const box = document.querySelector('.site-feedback');
   if (!box) return;
   const refEl = box.querySelector('.fb-ref'), link = box.querySelector('.fb-link'), copy = box.querySelector('.fb-copy');

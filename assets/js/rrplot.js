@@ -142,11 +142,11 @@
     if (el.clientWidth && el.clientWidth < 480) o.W = 400;
     const W = o.W || 640, n = o.ts != null ? 5 : 3, words = steps(o), reduce = root.matchMedia && root.matchMedia('(prefers-reduced-motion: reduce)').matches;
     el.innerHTML = `<div class="rr-stage"><svg class="rrp" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(aria(o))}"></svg></div>
-      <div class="rr-controls"><button type="button" class="rr-play">▶ Play</button><button type="button" class="rr-step">Next step ›</button><span class="rr-count small muted" aria-live="polite"></span></div>
+      <div class="rr-controls"><button type="button" class="rr-back" aria-label="Previous step">‹ Back</button><button type="button" class="rr-step primary">Next step ›</button><button type="button" class="rr-play">▶ Play all</button><span class="rr-count small muted" aria-live="polite"></span></div>
       <ol class="rr-steps">${words.map(w => `<li>${esc(w)}</li>`).join('')}</ol>`;
-    const svgEl = el.querySelector('svg'), play = el.querySelector('.rr-play'), stepBtn = el.querySelector('.rr-step'), count = el.querySelector('.rr-count'), items = [...el.querySelectorAll('.rr-steps li')];
+    const svgEl = el.querySelector('svg'), play = el.querySelector('.rr-play'), stepBtn = el.querySelector('.rr-step'), back = el.querySelector('.rr-back'), count = el.querySelector('.rr-count'), items = [...el.querySelectorAll('.rr-steps li')];
     let state = { curve: 0, shade: 0, crit: 0, ts: 0, verdict: 0 }, done = 0, raf = null, started = false;
-    const draw = () => { svgEl.innerHTML = frame(o, state); items.forEach((li, i) => { li.classList.toggle('on', i < done); li.classList.toggle('now', i === done - 1); }); count.textContent = `Step ${done} of ${n}`; };
+    const draw = () => { svgEl.innerHTML = frame(o, state); items.forEach((li, i) => { li.classList.toggle('on', i < done); li.classList.toggle('now', i === done - 1); }); count.textContent = done ? `Step ${done} of ${n}` : `Press Next step to build the graph one step at a time.`; };
     const finishTo = k => { for (let i = 0; i < k; i++) state[PHASES[i]] = 1; for (let i = k; i < 5; i++) state[PHASES[i]] = 0; done = k; draw(); };
     const stop = () => { if (raf) cancelAnimationFrame(raf); raf = null; };
     function animate(from, to, cb) {
@@ -159,17 +159,14 @@
       };
       runPhase();
     }
-    const label = () => { play.textContent = done >= n ? '↻ Replay' : started ? '▶ Play the rest' : '▶ Play'; stepBtn.disabled = done >= n; };
+    const label = () => { play.textContent = done >= n ? '↻ Replay' : done ? '▶ Play the rest' : '▶ Play all'; stepBtn.disabled = done >= n; back.disabled = done === 0; };
     play.addEventListener('click', () => { started = true; const from = done >= n ? 0 : done; if (from === 0) finishTo(0); play.disabled = true; animate(from, n, () => { play.disabled = false; label(); }); });
-    stepBtn.addEventListener('click', () => { started = true; if (done >= n) return; play.disabled = true; stepBtn.disabled = true; animate(done, done + 1, () => { play.disabled = false; label(); }); });
+    stepBtn.addEventListener('click', () => { started = true; if (done >= n) return; play.disabled = true; stepBtn.disabled = true; back.disabled = true; animate(done, done + 1, () => { play.disabled = false; label(); }); });
+    back.addEventListener('click', () => { stop(); if (done > 0) finishTo(done - 1); play.disabled = false; label(); });
     finishTo(0); label();
     if (root.Course && root.Course.renderMath) root.Course.renderMath(el.querySelector('.rr-steps'));
-    // play automatically the first time it scrolls into view
-    if ('IntersectionObserver' in root) {
-      const io = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { io.disconnect(); if (!started) play.click(); } }, { threshold: 0.5 });
-      io.observe(el);
-    } else play.click();
     el.rrFinish = () => { stop(); finishTo(n); play.disabled = false; label(); };
+    el.rrStep = () => stepBtn.click();
   }
   function mountAll(scope) { (scope || root.document).querySelectorAll('.rr-anim:not([data-mounted])').forEach(mount); }
 

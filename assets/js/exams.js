@@ -29,9 +29,10 @@
   /* ---------- menu ---------- */
   function menu() {
     stop(); state = null;
+    if (location.search.includes('attempt=')) history.replaceState(null, '', location.pathname);
     const h = history();
     const stat = id => { const a = h.attempts.filter(x => x.exam === id); if (!a.length) return 'Not attempted yet'; const best = Math.max(...a.map(x => x.pct)); return `${a.length} attempt${a.length > 1 ? 's' : ''} · best ${best}%`; };
-    const card = (ex, wide) => { const c = counts(ex); return `<article class="exam-card ${wide ? 'wide' : ''}"><div class="eyebrow">${ex.sub}</div><h2>${ex.title}</h2><p>${c.mc} multiple choice · ${c.fr} free response · ${maxPts(ex)} points · suggested ${ex.minutes >= 60 ? ex.minutes / 60 + ' hours' : ex.minutes + ' minutes'}</p><p class="small muted exam-stat">${stat(ex.id)}</p><button class="primary" data-start="${ex.id}">Start ${ex.id === 'final' ? 'the final' : 'quiz'}</button></article>`; };
+    const card = (ex, wide) => { const c = counts(ex); return `<article class="exam-card ${wide ? 'wide' : ''}"><div class="eyebrow">${ex.sub}</div><h2>${ex.title}</h2><p>${c.mc} multiple choice · ${c.fr} free response · ${maxPts(ex)} points · suggested ${ex.minutes >= 60 ? ex.minutes / 60 + ' hours' : ex.minutes + ' minutes'}</p><p class="small muted exam-stat">${stat(ex.id)}${h.attempts.some(x => x.exam === ex.id) ? ` · <a href="notebook.html#exams">review past attempts</a>` : ''}</p><button class="primary" data-start="${ex.id}">Start ${ex.id === 'final' ? 'the final' : 'quiz'}</button></article>`; };
     host.innerHTML = `<div class="page-intro"><div class="eyebrow">Practice exams</div><h1>Rehearse exam day.</h1><p>Answer every question first, then submit to see your score. Each attempt is a new version with fresh numbers, so you can retake as often as you like.</p></div>
     <div class="exam-timing"><label class="exam-check"><input type="checkbox" id="exam-timed"> Time me</label><span class="small muted">A countdown uses the suggested time and submits automatically when it reaches zero.</span></div>
     <div class="exam-grid">${card(EXAMS.final, true)}${[1, 2, 3, 4, 5, 6, 7, 8].map(m => card(EXAMS['m' + m])).join('')}</div>
@@ -141,8 +142,8 @@
       if (it.kind === 'mc') { const s = li.querySelector('input:checked'); it.pick = s ? Number(s.value) : null; it.pts = it.pick == null ? 0 : it.q.shown[it.pick].tier; }
       else { it.g = gradeFR(it, li); it.self = null; }
     });
-    const h = history(); state.attemptIndex = h.attempts.length;
-    h.attempts.push({ exam: state.ex.id, date: new Date().toISOString(), pct: 0 }); save(h);
+    const h = history(); state.attemptId = 'a' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+    h.attempts.push({ id: state.attemptId, exam: state.ex.id, date: new Date().toISOString(), pct: 0 }); save(h);
     logMistakes();
     review(); record();
   }
@@ -162,7 +163,7 @@
     const weak = Object.entries(t.byM).map(([m, v]) => ({ m: Number(m), pc: Math.round(100 * v.p / v.max) })).filter(x => x.pc < 80).sort((a, b) => a.pc - b.pc).slice(0, 3);
     if (!weak.length) return `<h2>What to study next</h2><p>Every module scored 80% or better. Try a new version, or the <a href="exams.html">final</a> if you have not taken it yet.</p>`;
     const missed = m => state.items.map((it, i) => ({ it, i })).filter(({ it }) => it.m === m && (it.kind === 'mc' ? it.pts < 4 : it.g.steps + (it.self == null ? 4 : it.self) < 8)).map(({ i }) => `<a href="#exam-q-${i}">${i + 1}</a>`);
-    return `<h2>What to study next</h2><p class="small muted">Your weakest modules on this attempt, lowest first.</p><ol class="study-list">${weak.map(w => { const q = missed(w.m); return `<li><strong>Module ${w.m}. ${titles[w.m - 1]}</strong> · ${w.pc}%${q.length ? `<br><span class="small">Questions to revisit: ${q.join(', ')}</span>` : ''}<br><span class="small"><a href="module-${w.m}.html">Reread the notes</a> · <a href="practice.html?module=${w.m}">Practice the skills</a>${state.ex.id === 'm' + w.m ? '' : ` · <button type="button" class="linkish" data-quiz="m${w.m}">Take the Module ${w.m} quiz</button>`}</span></li>`; }).join('')}</ol><p class="small"><a href="mistakes.html">See every mistake you have made so far</a></p>`;
+    return `<h2>What to study next</h2><p class="small muted">Your weakest modules on this attempt, lowest first.</p><ol class="study-list">${weak.map(w => { const q = missed(w.m); return `<li><strong>Module ${w.m}. ${titles[w.m - 1]}</strong> · ${w.pc}%${q.length ? `<br><span class="small">Questions to revisit: ${q.join(', ')}</span>` : ''}<br><span class="small"><a href="module-${w.m}.html">Reread the notes</a> · <a href="practice.html?module=${w.m}">Practice the skills</a>${state.ex.id === 'm' + w.m ? '' : ` · <button type="button" class="linkish" data-quiz="m${w.m}">Take the Module ${w.m} quiz</button>`}</span></li>`; }).join('')}</ol><p class="small"><a href="notebook.html#mistakes">See every mistake you have made so far</a></p>`;
   }
   function totals() {
     let auto = 0, written = 0, pending = 0; const byM = {};
@@ -174,8 +175,9 @@
     return { auto, written, pending, total: auto + written, max: maxPts(state.ex), byM };
   }
   function record() {
-    const t = totals(), h = history(), a = h.attempts[state.attemptIndex];
-    if (a) { Object.assign(a, { pct: Math.round(100 * t.total / t.max), points: t.total, max: t.max, pending: t.pending }); save(h); }
+    const t = totals(), h = history(), a = h.attempts.find(x => x.id === state.attemptId);
+    if (a) { Object.assign(a, { pct: Math.round(100 * t.total / t.max), points: t.total, max: t.max, pending: t.pending, detail: true }); save(h); }
+    saveDetail(a);
   }
 
   /* ---------- review ---------- */
@@ -184,7 +186,7 @@
     const q = it.q, head = `<div class="exam-q-head"><span class="exam-q-num">${i + 1}</span><span class="small muted">Module ${it.m}</span><span class="exam-score ${it.kind === 'mc' ? 't' + it.pts : ''}" data-score="${i}"></span></div>`;
     if (it.kind === 'mc') {
       const best = q.shown.findIndex(o => o.tier === 4);
-      return `<li class="exam-item reviewed" id="exam-q-${i}">${head}<div class="exam-stem">${T(q.stem)}</div><ul class="exam-options">${q.shown.map((o, k) => `<li class="exam-option ${k === it.pick ? 'picked' : ''} ${k === best ? 'best' : ''}"><div><b class="exam-letter">${LET[k]}</b> ${T(o.t)}</div><div class="exam-tier t${o.tier}">${o.tier} pt${o.tier === 1 ? '' : 's'}${k === it.pick ? ' · your answer' : ''}</div>${k === it.pick || k === best ? `<p class="small">${T(o.why)}</p>` : `<details><summary class="small">Why ${o.tier} point${o.tier === 1 ? '' : 's'}?</summary><p class="small">${T(o.why)}</p></details>`}</li>`).join('')}</ul>${it.pick == null ? '<p class="small"><strong>No answer was chosen.</strong></p>' : ''}<p class="small exam-links">Review: <a href="module-${it.m}.html">Module ${it.m} notes</a> · <a href="practice.html?module=${it.m}">practice</a></p></li>`;
+      return `<li class="exam-item reviewed" id="exam-q-${i}">${head}<div class="exam-stem">${T(q.stem)}</div><ul class="exam-options">${q.shown.map((o, k) => `<li class="exam-option ${k === it.pick ? 'picked' : ''} ${k === best ? 'best' : ''}"><div><b class="exam-letter">${LET[k]}</b> ${T(o.t)}</div><div class="exam-tier t${o.tier}">${o.tier} pt${o.tier === 1 ? '' : 's'}${k === it.pick ? ' · your answer' : ''}</div>${k === it.pick || k === best ? `<p class="small">${T(o.why)}</p>` : `<details><summary class="small">Why ${o.tier} point${o.tier === 1 ? '' : 's'}?</summary><p class="small">${T(o.why)}</p></details>`}</li>`).join('')}</ul>${it.pick == null ? '<p class="small"><strong>No answer was chosen.</strong></p>' : ''}<p class="small exam-links">Review: <a href="module-${it.m}.html">Module ${it.m} notes</a> · <a href="practice.html?module=${it.m}">practice</a> · <button type="button" class="linkish" data-nb-save data-module="${it.m}" data-source="exam" data-title="${E(state.ex.title)}, question ${i + 1}" data-correct="${it.kind === 'mc' ? it.pts === 4 : ''}">☆ Save to my notebook</button></p></li>`;
     }
     const g = it.g, parts = q.parts.map((p, k) => {
       const r = g.parts[k], ans = p.type === 'choice' ? T(p.options[p.answer]) : (p.show || Number(Number(p.answer).toFixed(4)).toString());
@@ -199,12 +201,12 @@
       <div class="exam-keys"><strong>Rubric</strong><ol><li><b>Key 1.</b> ${T(w.keys[0])}</li><li><b>Key 2.</b> ${T(w.keys[1])}</li></ol><p class="small"><b>4</b> both keys · <b>2</b> one key · <b>1</b> accurate but incomplete · <b>0</b> inaccurate or blank</p></div>
       <div class="exam-model"><strong>Model answer</strong><p>${T(w.model)}</p></div>
       <div class="exam-self" role="group" aria-label="Score your written answer for question ${i + 1}">${[4, 2, 1, 0].map(v => `<button type="button" data-self="${i}" data-v="${v}" aria-pressed="false">${v}</button>`).join('')}<span class="small muted">${g.written.trim() ? 'Pick the score your answer earns.' : 'A blank answer earns 0.'}</span></div></div>
-      <p class="small exam-links">Review: <a href="module-${it.m}.html">Module ${it.m} notes</a> · <a href="practice.html?module=${it.m}">practice</a></p></li>`;
+      <p class="small exam-links">Review: <a href="module-${it.m}.html">Module ${it.m} notes</a> · <a href="practice.html?module=${it.m}">practice</a> · <button type="button" class="linkish" data-nb-save data-module="${it.m}" data-source="exam" data-title="${E(state.ex.title)}, question ${i + 1}" data-correct="${it.kind === 'mc' ? it.pts === 4 : ''}">☆ Save to my notebook</button></p></li>`;
   }
   function review() {
     const s = state; host.oninput = host.onchange = null;
     s.items.forEach(it => { if (it.kind === 'fr' && !it.g.written.trim()) it.self = 0; });
-    host.innerHTML = `<div class="print-only print-head"><div><strong>STAT 2331 · ${s.ex.title} · results</strong><br><span class="small">${new Date().toLocaleString()}</span></div><div>Name ____________________________</div></div><div class="page-intro"><div class="eyebrow">${s.ex.title} · results</div><h1 class="exam-total"></h1><p class="exam-summary"></p>${s.timeUp ? '<p class="exam-timeup"><strong>Time is up.</strong> Your exam was submitted automatically.</p>' : ''}<div class="answer-row"><button class="primary" data-action="retake">Take a new version</button><button data-action="menu">All practice exams</button><button data-action="print">Print my results</button></div><p class="small muted no-print">Printing includes your score, the study plan, every question with your answer, and all the feedback. Score your written answers first so the total is complete.</p></div>
+    host.innerHTML = `<div class="print-only print-head"><div><strong>STAT 2331 · ${s.ex.title} · results</strong><br><span class="small">${new Date().toLocaleString()}</span></div><div>Name ____________________________</div></div><div class="page-intro"><div class="eyebrow">${s.ex.title} · results</div>${s.past ? `<p class="exam-past">You are reviewing an attempt from ${new Date(s.past).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}. <a href="notebook.html#exams">All my attempts</a></p>` : ''}<h1 class="exam-total"></h1><p class="exam-summary"></p>${s.timeUp ? '<p class="exam-timeup"><strong>Time is up.</strong> Your exam was submitted automatically.</p>' : ''}<div class="answer-row"><button class="primary" data-action="retake">Take a new version</button><button data-action="menu">All practice exams</button><button data-action="print">Print my results</button></div><p class="small muted no-print">Printing includes your score, the study plan, every question with your answer, and all the feedback. Score your written answers first so the total is complete.</p></div>
     <section class="exam-plan tip"></section>
     <section class="exam-breakdown"><h2>By module</h2><div class="table-scroll"><table><thead><tr><th>Module</th><th>Points</th><th>Score</th><th></th></tr></thead><tbody class="exam-bm"></tbody></table></div></section>
     <ol class="exam-items">${s.items.map(reviewItem).join('')}</ol>`;
@@ -234,6 +236,28 @@
     });
   }
 
-  C.exams = { EXAMS, get state() { return state; }, start, submit, menu };
-  menu();
+  /* ---------- saved attempts (Exam history in My notebook) ---------- */
+  const DKEY = 'stat2331-exam-detail-v1';
+  function saveDetail(a) {
+    if (!state || !state.attemptId) return;
+    let all = C.storage.read(DKEY, {});
+    all[state.attemptId] = { exam: state.ex.id, date: a ? a.date : new Date().toISOString(), timed: state.timed, timeUp: state.timeUp, minutes: state.minutes,
+      items: state.items.map(it => ({ kind: it.kind, m: it.m, id: it.id, q: it.q, pick: it.pick, pts: it.pts, g: it.g, self: it.self })) };
+    // keep the 20 newest attempts of each exam
+    const byExam = {}; Object.entries(all).forEach(([id, d]) => (byExam[d.exam] = byExam[d.exam] || []).push([id, d.date]));
+    Object.values(byExam).forEach(l => l.sort((x, y) => y[1].localeCompare(x[1])).slice(20).forEach(([id]) => delete all[id]));
+    for (let tries = 0; tries < 30; tries++) {
+      try { localStorage.setItem(DKEY, JSON.stringify(all)); return; }
+      catch (e) { const old = Object.entries(all).filter(([id]) => id !== state.attemptId).sort((x, y) => x[1].date.localeCompare(y[1].date)); if (!old.length) return; delete all[old[0][0]]; }
+    }
+  }
+  function openAttempt(id) {
+    const d = C.storage.read(DKEY, {})[id], ex = d && EXAMS[d.exam];
+    if (!ex) return false;
+    state = { ex, items: d.items, timed: d.timed, timeUp: d.timeUp, minutes: d.minutes, done: true, attemptId: id, past: d.date };
+    review(); return true;
+  }
+
+  C.exams = { EXAMS, get state() { return state; }, start, submit, menu, openAttempt };
+  { const id = new URLSearchParams(location.search).get('attempt'); if (!(id && openAttempt(id))) menu(); }
 })();
