@@ -80,7 +80,7 @@ root.GLOSSARY=[
 ['Test statistic',8,'logic','How many standard errors the estimate lies from the hypothesized value: TS = (estimate − hypothesized value)/standard error.'],
 ['Significance level (α)',8,'critical','The probability of rejecting H₀ when it is true. It sets the area of the rejection region.'],
 ['Rejection region',8,'critical','The values of the test statistic extreme enough to reject H₀, marked off by the critical value.'],
-['p-value',8,'critical','The probability, assuming H₀ is true, of a test statistic at least as extreme as the one observed. Rejecting when p-value ≤ α gives the same decision as the rejection region.'],
+['p-value',8,'p-value','The probability, assuming H₀ is true, of a test statistic at least as extreme as the one observed, in the direction of Hₐ (both tails for ≠). Reject H₀ if p-value ≤ α; this always gives the same decision as the rejection region.'],
 ['Type I error',8,'errors-power','Rejecting H₀ when it is actually true. Its probability is α.'],
 ['Type II error',8,'errors-power','Failing to reject H₀ when it is actually false. Its probability is β.'],
 ['Power',8,'errors-power','The probability of rejecting H₀ when it is false: power = 1 − β. Larger samples and larger effects increase power.'],

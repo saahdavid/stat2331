@@ -214,3 +214,11 @@ button.linkish{background:none;border:0;padding:0;font:inherit;color:var(--blue)
 .rr-static svg{max-width:560px;width:100%;height:auto}
 @media print{.bm-heading,.sel-pop,.nb-toast{display:none!important}}
 @media(max-width:720px){.topnav{flex-wrap:wrap;justify-content:flex-start;gap:6px 16px}.topnav a{white-space:nowrap}.topnav a[aria-current=page]{padding-bottom:2px}}
+.rrp-pshade{fill:var(--blue);opacity:.55}.rrp-pshade-reject{fill:var(--red);opacity:.7}.rrp-pshade-keep{fill:var(--green);opacity:.55}
+.rrp-alpha{fill:none;stroke:var(--red);stroke-width:1.6;stroke-dasharray:5 4}.rrp-alphalabel{font:700 12px 'Atkinson Hyperlegible',sans-serif;fill:var(--red)}
+.rrp-plabel{font:700 13px 'Atkinson Hyperlegible',sans-serif;fill:var(--blue)}.rrp-ts-mirror{stroke-dasharray:4 3;opacity:.7}
+.rr-mode{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0 0 8px}.rr-mode button{font-size:13px;padding:6px 12px;min-height:0}
+.align-left th,.align-left td{text-align:left!important}
+.method-switch{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;margin:4px 0 14px;padding:10px 12px;border:1px dashed var(--line);border-radius:8px;background:var(--sheet)}.method-switch button{font-size:14px;padding:6px 12px;min-height:0}
+.pint-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px}.pint-row input{width:9em;max-width:40vw}.pint-help{margin:6px 0 0}
+.part[hidden]{display:none!important}

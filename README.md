@@ -15,7 +15,7 @@ Student URL after GitHub Pages is enabled: **https://saahdavid.github.io/stat233
 | 5. Normal & Binomial | Empirical Rule; z scores; normal areas; inverse normal; BINS; exact/cumulative binomial; binomial mean/SD; normal approximation | Building a binomial distribution |
 | 6. Sampling Distributions | p̂ center/spread; minimum n; p̂ probabilities; x̄ probabilities; middle ranges; CLT; n/spread; three distributions/unbiasedness | Sampling distribution of p̂; sample means and CLT |
 | 7. Confidence Intervals | Proportion CI; t* lookup; mean CI; estimate/margin; n for p; n for μ; confidence interpretation; margin changes | Repeated confidence intervals |
-| 8. Hypothesis Testing + Uses & Abuses | Hypotheses; proportion z test; mean t test; critical values and rejection regions; decision/conclusion; Type I/II; power/β; CI decisions/practical significance | The rejection region; Type I error and power |
+| 8. Hypothesis Testing + Uses & Abuses | Hypotheses; proportion z test; mean t test; critical values and rejection regions; the p-value approach (normal table for z, t-table interval or exact value for t); decision/conclusion; Type I/II; power/β; CI decisions/practical significance | What the p-value really is; the rejection region; Type I error and power |
 
 Each module contains explanations, highlighted formulas, worked examples, common mistakes, TI-84 checks, Excel formulas, a table of contents, previous/next links, and practice. The normal and t tables have lookup helpers; the reference page also contains a formula sheet.
 
@@ -24,7 +24,8 @@ Study tools beyond the modules:
 - **Spaced review.** A mastered skill comes back for review after 3 days; each clean review doubles the gap (up to 60 days) and a miss brings it back the next day. Due skills are listed on the home page and in each module's practice.
 - **My notebook** (`notebook.html`, in the top menu). Four tabs: **Mistakes** (every error practice or an exam recognized, with its explanation and a link to practice that skill), **Saved questions** (any question saved with ☆ Save to my notebook after checking it, with the student's answer, the worked solution, and a note), **Bookmarks** (sections bookmarked with the icon beside a heading, or passages selected in the notes, with notes; a selected passage can also be sent as a question to the instructor through the feedback form), and **Exam history** (every attempt; the 20 newest of each exam reopen with all answers and feedback). The progress link carries mastery and the notebook to another device, except full exam answers. `mistakes.html` now redirects here.
 - **Module list toggle.** The Modules button at the top left hides or shows the module list on any screen; the choice is remembered.
-- **Rejection-region graphs** build one step at a time: Next step, Back, and Play all. They no longer play by themselves.
+- **Rejection-region graphs** build one step at a time: Next step, Back, and Play all. They no longer play by themselves. Every graph with a test statistic has a **Decide with** switch: *Critical value* (rejection region) or *p-value* (shaded tail beyond TS compared with the outlined α region).
+- **Either method.** Practice and practice-exam test questions let the student decide with the critical value or the p-value (the choice is remembered). A t-test p-value is answered as the interval from the t-table (two boxes) or the exact value (first box only). The new skill *p-value and decision* and two new Module 8 multiple-choice templates practice the p-value directly; each Module 8 quiz draws 8 of its 10 multiple-choice templates.
 - **What to study next.** Exam results end with the weakest modules, the questions to revisit, and links to notes, practice, and that module's quiz.
 - **Printable results.** After submitting an exam, students can print their score, study plan, every question with their answer, and all the feedback. There is no printable blank exam, so the answers are never visible before the work is done.
 - **Review sheets** (`review.html`). One printable page per module, built automatically from the notes: each section's key idea, its formulas, and its common-mistake boxes. Edit the notes and the sheet follows.
@@ -55,7 +56,7 @@ The source material is the instructor's eight filled lecture notes (not included
 
 ## Using the labs
 
-All ten labs offer **Take 1**, **Take 10**, **Play/Pause**, **Add 1000 instantly**, **Speed**, and **Start over**. Parameter changes reset prior runs. Take 1 shows drawing, computation, and placement; faster modes accumulate repetitions. Reduced-motion preferences remove gliding while preserving the sampling steps.
+All eleven labs offer **Take 1**, **Take 10**, **Play/Pause**, **Add 1000 instantly**, **Speed**, and **Start over**. Parameter changes reset prior runs. Take 1 shows drawing, computation, and placement; faster modes accumulate repetitions. Reduced-motion preferences remove gliding while preserving the sampling steps.
 
 The first two labs allow pointer dragging and arrow-key adjustment of focused points. Regression also allows clicking to add points and adding an influential point. The randomization lab compares random assignment with biased selection. The LLN lab supports up to five parallel runs. Confidence intervals are clickable and keyboard selectable to show their calculation.
 
@@ -78,6 +79,7 @@ Numerical assumptions are visible beside the simulation:
 - Proportion CIs require random data and at least 10 observed successes and failures. Mean intervals/tests require random data and no extreme skew or extreme outliers.
 - Planned n for p uses `(z*)² p̂(1−p̂)/m²`, with .5 if no estimate exists. Planned n for μ at 95% uses the course approximation `4s²/m²`. **Always round up**.
 - H₀ uses equality. Proportion-test expected counts and SE use p₀. Decisions use critical values from the t-table (z* row for proportions, row df = n − 1 for means, column α or α/2) and the rejection region; p-values are mentioned only as what software reports. Say **reject** or **fail to reject**, and conclude in terms of Hₐ in context.
+- p-values: Hₐ with > uses P(Z ≥ TS), < uses P(Z ≤ TS), ≠ uses 2P(Z ≥ |TS|) (T for means). For z, round to two decimals and use the normal table. For t, the t-table brackets the p-value (row df = n − 1, next smaller if unlisted; double the column areas for ≠); tcdf / T.DIST gives the exact value. Reject H₀ if p-value ≤ α; both methods always agree.
 
 ## Publish with GitHub Pages
 
@@ -121,7 +123,7 @@ assets/js/questions/module-N.js Eight skill generators per module
 assets/js/practice.js           Input, feedback, mastery, mixed sets
 assets/js/mathify.js            Typesets math written as plain text (x̄, p̂, √[…], ≤, subscripts)
                                 before KaTeX runs, everywhere math is rendered
-assets/js/rrplot.js             Animated rejection-region graphs (Module 8)
+assets/js/rrplot.js             Animated test graphs (Module 8): critical-value and p-value methods
 assets/js/hand/                 Multi-step questions: stats.js and kit.js (helpers, figures,
                                 TI/Excel snippets), m1–m8.js (generators), merge.js (maps them
                                 onto the course skill ids)

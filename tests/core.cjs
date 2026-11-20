@@ -9,12 +9,12 @@ load('rrplot');for(const f of ['stats','kit',...Array.from({length:8},(_,i)=>`m$
 let steps=0,styles=0;
 let generated=0;
 for(const [m,skills] of Object.entries(ctx.Course.questions)){
- assert.equal(skills.length,8,`Module ${m}: 8 skills`);
+ assert.equal(skills.length,m==='8'?9:8,`Module ${m}: skill count`);
  for(const skill of skills){
  for(const gen of (skill.sources||{}).steps||[]){styles++;const seen=new Set();for(let i=0;i<500;i++){const q=gen();steps++;
   assert.ok(q.multi&&q.prompt&&q.solution&&q.parts.length>=1,skill.id);assert.ok(!/undefined|NaN|Infinity/.test(JSON.stringify(q)),`${skill.id} step version has invalid output`);
   assert.ok(!/\\[()[\]]/.test(q.prompt+q.solution+JSON.stringify(q.parts)),`${skill.id} has unconverted TeX delimiters`);seen.add(q.prompt);
-  for(const p of q.parts){if(p.type==='choice'){assert.ok(p.answer>=0&&p.answer<p.options.length,skill.id);}else{assert.ok(Number.isFinite(p.answer),skill.id);for(const a of p.alts||[])assert.ok(Number.isFinite(a));for(const x of p.mistakes||[])assert.ok(Number.isFinite(x.value),skill.id);}}}
+  for(const p of q.parts){if(p.type==='pint'){assert.ok([p.lo,p.hi,p.exact].every(Number.isFinite)&&p.lo<=p.hi&&p.exact>=p.lo-1e-9-0.02,skill.id+' pint');for(const x of p.mistakes||[])assert.ok(Number.isFinite(x.value)||(Number.isFinite(x.lo)&&Number.isFinite(x.hi)),skill.id);}else if(p.type==='choice'){assert.ok(p.answer>=0&&p.answer<p.options.length,skill.id);}else{assert.ok(Number.isFinite(p.answer),skill.id);for(const a of p.alts||[])assert.ok(Number.isFinite(a));for(const x of p.mistakes||[])assert.ok(Number.isFinite(x.value),skill.id);}}}
   assert.ok(seen.size>=4,`${skill.id} step version must generate fresh variants`);}
  const generate=skill.sources?skill.sources.original:skill.generate;const variants=new Set();for(let i=0;i<500;i++){
   const q=generate();generated++;assert.ok(q.prompt&&q.solution&&q.ti&&q.excel,skill.id);
@@ -33,13 +33,13 @@ assert.equal(S.tBracket(3.204,7).lower,.005);assert.equal(S.tBracket(3.204,7).up
 for(const [input,value] of [['11/200',.055],['0.48*0.52',.2496],['sqrt(0.25/100)',.05],['5.5%',.055],['(2+3)^2',25],['-2^2',-4],['2^-2',.25],['1e-3',.001]])assert.ok(Math.abs(S.parse(input)-value)<1e-12,input);
 for(const input of ['alert(1)','globalThis','1/0','sqrt(-1)','2;3','2**3','constructor()','1e999'])assert.throws(()=>S.parse(input),undefined,input);
 for(let i=0;i<=100;i++){const z=-5+i*.1;assert.ok(Math.abs(S.normalCDF(z)+S.normalCDF(-z)-1)<1e-12);}
-console.log(`PASS: ${generated.toLocaleString()} single-answer and ${steps.toLocaleString()} multi-step questions (${styles} multi-step styles) across 64 skills; parser, quartiles, conventions, and numerical smoke checks.`);
+console.log(`PASS: ${generated.toLocaleString()} single-answer and ${steps.toLocaleString()} multi-step questions (${styles} multi-step styles) across 65 skills; parser, quartiles, conventions, and numerical smoke checks.`);
 
 // Practice-exam bank: every multiple-choice item has four distinct options with exactly one 4-point answer;
 // every free-response item has finite answers and a two-key written rubric.
 {for(const f of ['exams/bank','exams/m1-4','exams/m5-8'])load(f);const c={ExamBank:ctx.ExamBank};const B=c.ExamBank,bad=new Set();let n=0;
 
-for(let m=1;m<=8;m++){assert.equal(B.mc[m].length,8);assert.equal(B.fr[m].length,2);
+for(let m=1;m<=8;m++){assert.equal(B.mc[m].length,m===8?10:8);assert.equal(B.fr[m].length,2);
  for(const it of B.mc[m])for(let i=0;i<800;i++){let q;try{q=it.gen()}catch(e){bad.add(it.id+' threw '+e.message);break}n++;
   const t=q.options.map(o=>o.t);if(q.options.length!==4)bad.add(it.id+' count '+q.options.length);
   if(new Set(t).size!==4)bad.add(it.id+' dup '+t.join(' | '));
@@ -48,6 +48,6 @@ for(let m=1;m<=8;m++){assert.equal(B.mc[m].length,8);assert.equal(B.fr[m].length
   if(/undefined|NaN|Infinity/.test(JSON.stringify(q)))bad.add(it.id+' text: '+JSON.stringify(q).match(/.{0,50}(undefined|NaN|Infinity).{0,20}/)[0]);}
  for(const it of B.fr[m])for(let i=0;i<800;i++){let q;try{q=it.gen()}catch(e){bad.add(it.id+' threw '+e.message);break}n++;
   if(/undefined|NaN|Infinity/.test(JSON.stringify(q)))bad.add(it.id+' text: '+JSON.stringify(q).match(/.{0,50}(undefined|NaN|Infinity).{0,20}/)[0]);
-  for(const p of q.parts){if(p.type==='choice'){if(!(p.answer>=0&&p.answer<p.options.length))bad.add(it.id+' choice')}else if(!Number.isFinite(p.answer))bad.add(it.id+' num '+p.label);}
+  for(const p of q.parts){if(p.type==='pint'){if(![p.lo,p.hi,p.exact].every(Number.isFinite))bad.add(it.id+' pint')}else if(p.type==='choice'){if(!(p.answer>=0&&p.answer<p.options.length))bad.add(it.id+' choice')}else if(!Number.isFinite(p.answer))bad.add(it.id+' num '+p.label);}
   if(!q.written||q.written.keys.length!==2)bad.add(it.id+' written');}}
-assert.deepEqual([...bad],[]);console.log(`PASS: ${n.toLocaleString()} practice-exam items (64 multiple-choice and 16 free-response templates).`);}
+assert.deepEqual([...bad],[]);console.log(`PASS: ${n.toLocaleString()} practice-exam items (66 multiple-choice and 16 free-response templates).`);}

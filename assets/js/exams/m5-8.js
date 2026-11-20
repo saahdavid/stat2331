@@ -320,6 +320,12 @@
   const zc = (a, two) => S.round(S.qnorm(1 - (two ? a / 2 : a)), 3);
   const tc = (df, a, two) => S.tTableValue(S.tTableRow(df), two ? a / 2 : a);
   const rr = (dir, c) => dir === '>' ? `TS ≥ ${c}` : dir === '<' ? `TS ≤ −${c}` : `|TS| ≥ ${c}`;
+  const RP = () => root.RRPlot;
+  const zp = (z, dir) => RP().norm({ dist: 'z', dir, ts: S.round(z, 2), crit: 1 }).p;                 // normal-table p-value
+  const tpx = (t, dir, df) => RP().pValue(RP().norm({ dist: 't', df, dir, ts: t, crit: 1 }));          // exact t p-value
+  const tbr = (t, dir, df) => RP().bracket(RP().norm({ dist: 't', df, dir, ts: t, crit: 1 }));         // t-table interval
+  const P4 = v => v < 0.0001 ? 'less than 0.0001' : n(v, 4);
+  const BRK = b => b.lo <= 0 ? `p-value < ${n(b.hi)}` : b.hi >= 1 ? `p-value > ${n(b.lo)}` : `${n(b.lo)} < p-value < ${n(b.hi)}`;
   B.MC(8, 'm8-hyp', () => {
     const p0 = R.pick([0.25, 0.3, 0.4, 0.5, 0.6]), up = R.coin(), ph = S.round(p0 + (up ? 1 : -1) * 0.04, 2);
     const ctx = R.pick(['a company claims that the proportion of satisfied customers has increased from', 'a researcher suspects the proportion of left-handed students differs from', 'a coach believes the proportion of injuries has decreased from']);
@@ -385,6 +391,30 @@
       [row !== df && up !== c ? up : zstar, 1, row !== df && up !== c ? `df = ${df} is not listed: use the next smaller row (${row}), not the next larger.` : 'That is z*. For a mean with s, use the t row for df = n − 1.'],
       [a, 0, 'α is the area of the rejection region, not the critical value.']], 3, v => n(v, 3)) };
   });
+  B.MC(8, 'm8-pvz', () => {
+    const side = R.pick(['>', '<', '\\ne']), z = S.round((side === '<' ? -1 : side === '>' ? 1 : R.pick([-1, 1])) * R.step(0.6, 2.9, 0.01), 2);
+    const dir = side === '>' ? 'gt' : side === '<' ? 'lt' : 'ne', p = zp(z, dir), left = S.round(1 - RP().upper(z, 'z'), 4), tail = Math.min(left, 1 - left);
+    const opts = [[p, 4, `Correct: ${side === '\\ne' ? `two-sided, so double the tail beyond |z|: 2(${n(tail, 4)}) = ${n(p, 4)}` : side === '>' ? `the area to the right of z: 1 − ${n(left, 4)} = ${n(p, 4)}` : `the area to the left of z: ${n(p, 4)}`}.`]];
+    opts.push(side === '\\ne' ? [tail, 2, 'That is one tail. A two-sided p-value counts both tails, so double it.'] : [Math.min(1, 2 * p), 2, 'One-sided: do not double the tail area.']);
+    opts.push([side === '\\ne' ? 1 - tail : 1 - p, 1, side === '>' ? 'That is the left area. For Hₐ with >, take the area to the right.' : side === '<' ? 'That is the area to the right. For Hₐ with <, take the area to the left.' : 'That is the area between the tails, not beyond them.']);
+    opts.push([Math.abs(z), 0, 'That is the test statistic, not an area.']);
+    return { stem: `A z test for a proportion has \\(H_a: p ${side} p_0\\) and test statistic \\(z = ${tx(z, 2)}\\). Using the normal table, what is the p-value?`, numeric: true, options: nums(opts, 4, v => n(v, 4)) };
+  });
+  B.MC(8, 'm8-pvt', () => {
+    const k = R.pick([8, 11, 13, 16, 21, 26, 31]), df = k - 1, side = R.pick(['>', '<', '\\ne']), dir = side === '>' ? 'gt' : side === '<' ? 'lt' : 'ne';
+    let t, b; do { t = S.round((side === '<' ? -1 : side === '>' ? 1 : R.pick([-1, 1])) * R.step(0.8, 3.6, 0.001), 3); b = tbr(t, dir, df); } while (b.lo <= 0 || b.hi >= 0.25 * (dir === 'ne' ? 2 : 1) - 1e-9);
+    const two = dir === 'ne', half = { lo: b.lo / 2, hi: b.hi / 2 }, dbl = { lo: b.lo * 2, hi: b.hi * 2 };
+    const fmt = x => `between ${n(x.lo)} and ${n(x.hi)}`;
+    const wrongRow = tbr(t, dir, k);  // using df = n
+    const options = [
+      o(fmt(b), 4, `Correct: row df = ${b.row}${b.row !== df ? ` (${df} is not listed, so the next smaller row)` : ''}; |t| = ${n(Math.abs(t), 3)} falls between the table values for those ${two ? 'column areas, doubled for a two-sided test' : 'column areas'}. Exactly, p-value = ${P4(tpx(t, dir, df))}.`),
+      o(fmt(two ? half : dbl), 2, two ? 'Those are the one-tail areas. A two-sided p-value doubles them.' : 'One-sided: do not double the column areas.'),
+      (() => { const f = two ? 2 : 1, TT = [0.25, 0.2, 0.15, 0.1, 0.05, 0.025, 0.02, 0.01, 0.005, 0.0025, 0.001, 0.0005].map(x => S.round(x * f, 6)), j = TT.findIndex(x => Math.abs(x - b.hi) < 1e-9), useRow = S.tTableRow(k) !== b.row && (wrongRow.lo !== b.lo || wrongRow.hi !== b.hi);
+        return useRow ? o(fmt(wrongRow), 1, 'That uses row df = n. Use df = n − 1.') : o(fmt({ lo: TT[j], hi: TT[j - 1] }), 1, `Off by one column: in row df = ${b.row}, |t| = ${n(Math.abs(t), 3)} is beyond the table value for ${n(TT[j] / f)}${two ? ' (one tail)' : ''}, so the p-value is below ${n(b.hi)}.`); })(),
+      o(`between ${n(1 - b.hi)} and ${n(1 - b.lo)}`, 0, 'Those are areas on the other side of the test statistic; the p-value is the tail beyond it.')];
+    if (new Set(options.map(x => x.t)).size < 4) return B.mc[8].find(x => x.id === 'm8-pvt').gen();
+    return { stem: `A t test of \\(H_a: \\mu ${side} \\mu_0\\) uses a sample of \\(n = ${k}\\) and gives \\(t = ${tx(t, 3)}\\). From the t-table, the p-value is…`, options };
+  });
   B.MC(8, 'm8-practical', () => ({ stem: R.pick(['A study of 50,000 adults finds a new diet lowers weight by an average of 0.2 pound, and the test statistic falls far into the rejection region. Which statement is best?', 'With 80,000 students, an app raises test scores by 0.3 point out of 100, and the test statistic falls in the rejection region at α = 0.01. Which statement is best?']), options: [
     o('The result is statistically significant but may not be practically important.', 4, 'Correct: huge samples detect tiny effects.'),
     o('The result is practically important because the test statistic is so extreme.', 2, 'An extreme TS measures evidence against H₀, not the size of the effect.'),
@@ -393,7 +423,8 @@
 
   B.FR(8, 'm8-ztest', () => {
     const p0 = R.pick([0.2, 0.25, 0.3, 0.4, 0.5]), k = R.pick([200, 250, 400, 500]), ph = S.round(p0 + R.step(0.02, 0.08, 0.01), 2), x = Math.round(ph * k);
-    const a = R.pick([0.05, 0.01, 0.10]), phat = x / k, se = Math.sqrt(p0 * (1 - p0) / k), z = (phat - p0) / se, c = zc(a, false), rej = z >= c;
+    const a = R.pick([0.05, 0.01, 0.10]), phat = x / k, se = Math.sqrt(p0 * (1 - p0) / k), z = (phat - p0) / se, c = zc(a, false), rej = z >= c, pv = zp(z, 'gt'), zr = S.round(z, 2);
+    if ((pv <= a) !== rej) return B.fr[8].find(f => f.id === 'm8-ztest').gen();
     const ctx = R.pick(['shoppers who use self-checkout', 'adults who work from home at least one day a week', 'students who own a tablet']);
     return {
       stem: `Last year ${n(p0 * 100)}% of ${ctx}. This year a random sample of ${k} finds ${x}. Test whether the proportion has increased, at \\(\\alpha = ${a}\\).`,
@@ -401,19 +432,21 @@
         { type: 'choice', label: 'Alternative hypothesis', options: [`\\(H_a: p > ${tx(p0, 2)}\\)`, `\\(H_a: p \\ne ${tx(p0, 2)}\\)`, `\\(H_a: \\hat p > ${tx(p0, 2)}\\)`], answer: 0, fixed: true, why: { 1: 'The claim is an increase, so Hₐ is one-sided.', 2: 'Hypotheses are about p, not p̂.' } },
         { type: 'num', label: '\\(\\hat p\\)', answer: phat },
         { type: 'num', label: 'Test statistic \\(z\\)', answer: z, tol: 0.02, mistakes: [{ value: (phat - p0) / Math.sqrt(phat * (1 - phat) / k), msg: 'Use p₀ in the SE.' }] },
-        { type: 'num', label: 'Critical value \\(z^*\\)', answer: c, tol: 0.0015, mistakes: [{ value: zc(a, true), msg: 'Hₐ is one-sided: use column α, not α/2.' }] }],
-      written: { prompt: 'State the rejection region, your decision, and your conclusion in context.',
-        keys: [`Gives the rejection region TS ≥ ${n(c, 3)} and decides correctly: TS = ${n(z, 2)} is ${rej ? 'in' : 'not in'} it, so ${rej ? 'reject' : 'fail to reject'} H₀.`, `States the conclusion about Hₐ in context: there ${rej ? 'is' : 'is not'} sufficient evidence the proportion of ${ctx} has increased.`],
-        model: `Reject H₀ if TS ≥ ${n(c, 3)}. Since TS = ${n(z, 2)} ${rej ? '≥' : '<'} ${n(c, 3)}, the test statistic is ${rej ? '' : 'not '}in the rejection region, so we ${rej ? 'reject' : 'fail to reject'} H₀. There ${rej ? 'is' : 'is not'} sufficient evidence at the ${a} level that the proportion of ${ctx} has increased from ${n(p0, 2)}.` },
-      solution: [`\\(H_0: p = ${tx(p0, 2)}\\), \\(H_a: p > ${tx(p0, 2)}\\).`, `Conditions: \\(np_0 = ${tx(k * p0)}\\) and \\(n(1-p_0) = ${tx(k * (1 - p0))}\\) are at least 10; random sample.`, `\\(\\hat p = ${x}/${k} = ${tx(phat)}\\); SE = \\(\\sqrt{${tx(p0, 2)}(${tx(1 - p0, 2)})/${k}} = ${tx(se)}\\).`, `\\(z = (${tx(phat)} - ${tx(p0, 2)})/${tx(se)} = ${tx(z, 2)}\\).`, `Upper-tailed, \\(\\alpha = ${a}\\): \\(z^*\\) row, column ${a}, so \\(z^* = ${tx(c, 3)}\\). Reject if TS ≥ ${n(c, 3)}.`, `${n(z, 2)} ${rej ? '≥' : '<'} ${n(c, 3)}: ${rej ? 'reject' : 'fail to reject'} H₀.`],
+        { type: 'num', method: 'cv', label: 'Critical value \\(z^*\\)', answer: c, tol: 0.0015, mistakes: [{ value: zc(a, true), msg: 'Hₐ is one-sided: use column α, not α/2.' }] },
+        { type: 'num', method: 'pv', label: 'p-value (normal table, 4 decimals)', answer: pv, tol: 0.00051, show: P4(pv), mistakes: [{ value: S.round(1 - pv, 4), tol: 0.00051, msg: 'That is the left area. Hₐ has >, so the p-value is the area to the right: 1 − left area.' }, { value: Math.min(1, 2 * pv), tol: 0.00051, msg: 'One-sided: do not double the tail area.' }] }],
+      written: { prompt: 'Using the critical value or the p-value (your choice), state your decision and your conclusion in context.',
+        keys: [`Decides correctly with either method: TS = ${n(z, 2)} is ${rej ? 'in' : 'not in'} the rejection region TS ≥ ${n(c, 3)}, or the p-value ${P4(pv)} is ${rej ? 'at most' : 'greater than'} α = ${a}; so ${rej ? 'reject' : 'fail to reject'} H₀.`, `States the conclusion about Hₐ in context: there ${rej ? 'is' : 'is not'} sufficient evidence the proportion of ${ctx} has increased.`],
+        model: `Critical value: reject H₀ if TS ≥ ${n(c, 3)}; TS = ${n(z, 2)} is ${rej ? '' : 'not '}in the rejection region. (Or: p-value = P(Z ≥ ${n(zr, 2)}) = ${P4(pv)}, which is ${rej ? 'at most' : 'greater than'} ${a}.) So we ${rej ? 'reject' : 'fail to reject'} H₀. There ${rej ? 'is' : 'is not'} sufficient evidence at the ${a} level that the proportion of ${ctx} has increased from ${n(p0, 2)}.` },
+      solution: [`\\(H_0: p = ${tx(p0, 2)}\\), \\(H_a: p > ${tx(p0, 2)}\\).`, `Conditions: \\(np_0 = ${tx(k * p0)}\\) and \\(n(1-p_0) = ${tx(k * (1 - p0))}\\) are at least 10; random sample.`, `\\(\\hat p = ${x}/${k} = ${tx(phat)}\\); SE = \\(\\sqrt{${tx(p0, 2)}(${tx(1 - p0, 2)})/${k}} = ${tx(se)}\\).`, `\\(z = (${tx(phat)} - ${tx(p0, 2)})/${tx(se)} = ${tx(z, 2)}\\).`, `<strong>Critical value:</strong> upper-tailed, \\(\\alpha = ${a}\\): \\(z^*\\) row, column ${a}, so \\(z^* = ${tx(c, 3)}\\). Reject if TS ≥ ${n(c, 3)}; ${n(z, 2)} ${rej ? '≥' : '<'} ${n(c, 3)}.`, `<strong>p-value:</strong> \\(P(Z \\ge ${tx(zr, 2)}) = 1 - ${tx(S.round(1 - pv, 4), 4)} = ${P4(pv)}\\) from the normal table, which is ${rej ? 'at most' : 'greater than'} \\(\\alpha = ${a}\\).`, `Either way: ${rej ? 'reject' : 'fail to reject'} H₀.`],
       figure: root.RRPlot ? root.RRPlot.svg({ dist: 'z', dir: 'gt', crit: c, ts: S.round(z, 2), alpha: a }) : '',
-      ti: `STAT ▸ TESTS ▸ 5:1-PropZTest: p0=${n(p0, 2)}, x=${x}, n=${k}, prop>p0 (reports z). invNorm(${n(1 - a)}) = ${n(c, 3)}.`, excel: `=NORM.S.INV(${n(1 - a)})`
+      ti: `STAT ▸ TESTS ▸ 5:1-PropZTest: p0=${n(p0, 2)}, x=${x}, n=${k}, prop>p0 (reports z and the p-value). invNorm(${n(1 - a)}) = ${n(c, 3)}.`, excel: `=NORM.S.INV(${n(1 - a)}) gives z*; =1-NORM.S.DIST(${n(zr, 2)},TRUE) gives the p-value`
     };
   });
   B.FR(8, 'm8-ttest', () => {
     const k = R.pick([9, 12, 15, 16, 20, 25]), mu0 = R.int(40, 80), s = S.round(R.step(4, 12, 0.1), 1), df = k - 1, a = R.pick([0.05, 0.01, 0.10]);
     const xb = S.round(mu0 - R.step(0.4, 1.0, 0.05) * s * 2.6 / Math.sqrt(k), 1), se = s / Math.sqrt(k), t = (xb - mu0) / se;
-    const row = S.tTableRow(df), c = tc(df, a, false), rej = t <= -c;
+    const row = S.tTableRow(df), c = tc(df, a, false), rej = t <= -c, px = tpx(t, 'lt', df), br = tbr(t, 'lt', df);
+    if ((px <= a) !== rej || (br.lo < a && a < br.hi)) return B.fr[8].find(f => f.id === 'm8-ttest').gen();
     const ctx = R.pick([['mean battery life', 'hours'], ['mean fill weight', 'grams'], ['mean delivery time', 'minutes']]);
     return {
       stem: `A company claims the ${ctx[0]} is ${mu0} ${ctx[1]}. A consumer group suspects it is less. A random sample of ${k} gives \\(\\bar x = ${tx(xb, 1)}\\) and \\(s = ${tx(s, 1)}\\). The data show no strong skew. Test at \\(\\alpha = ${a}\\).`,
@@ -421,13 +454,14 @@
         { type: 'num', label: 'Standard error', answer: se, tol: 0.0015, mistakes: [{ value: s / k, msg: 'Divide by √n.' }] },
         { type: 'num', label: 'Test statistic \\(t\\)', answer: t, tol: 0.006, mistakes: [{ value: -t, msg: 't = (x̄ − μ₀)/SE; keep the sign.' }] },
         { type: 'num', label: 'Degrees of freedom', answer: df, mistakes: [{ value: k, msg: 'df = n − 1.' }] },
-        { type: 'num', label: 'Critical value \\(t^*\\) from the t-table', answer: c, tol: 0.0015, mistakes: [{ value: tc(df, a, true), msg: 'Hₐ is one-sided: use column α, not α/2.' }, { value: zc(a, false), msg: 'That is z*; use the t row for df = n − 1.' }] }],
-      written: { prompt: 'State the rejection region, your decision, and your conclusion in context.',
-        keys: [`Gives the rejection region TS ≤ −${n(c, 3)} and decides correctly: ${rej ? 'reject' : 'fail to reject'} H₀.`, `Concludes in context about Hₐ: there ${rej ? 'is' : 'is not'} sufficient evidence that the ${ctx[0]} is less than ${mu0} ${ctx[1]}.`],
-        model: `Reject H₀ if TS ≤ −${n(c, 3)}. Since TS = ${n(t, 3)} ${rej ? '≤' : '>'} −${n(c, 3)}, it is ${rej ? '' : 'not '}in the rejection region, so we ${rej ? 'reject' : 'fail to reject'} H₀. There ${rej ? 'is' : 'is not'} sufficient evidence at the ${a} level that the ${ctx[0]} is less than ${mu0} ${ctx[1]}.` },
-      solution: [`\\(H_0: \\mu = ${mu0}\\), \\(H_a: \\mu < ${mu0}\\).`, `SE = \\(${tx(s, 1)}/\\sqrt{${k}} = ${tx(se)}\\).`, `\\(t = (${tx(xb, 1)} - ${mu0})/${tx(se)} = ${tx(t, 3)}\\), df = ${df}.`, `Lower-tailed, \\(\\alpha = ${a}\\): row df = ${row}, column ${a}, so \\(t^* = ${tx(c, 3)}\\). Reject if TS ≤ −${n(c, 3)}.`, `${n(t, 3)} ${rej ? '≤' : '>'} −${n(c, 3)}: ${rej ? 'reject' : 'fail to reject'} H₀.`],
+        { type: 'num', method: 'cv', label: 'Critical value \\(t^*\\) from the t-table', answer: c, tol: 0.0015, mistakes: [{ value: tc(df, a, true), msg: 'Hₐ is one-sided: use column α, not α/2.' }, { value: zc(a, false), msg: 'That is z*; use the t row for df = n − 1.' }] },
+        { type: 'pint', method: 'pv', label: 'p-value: between which two t-table areas? (or the exact value)', lo: br.lo, hi: br.hi, exact: px, mistakes: br.hi * 2 <= 1 ? [{ lo: br.lo * 2, hi: br.hi * 2, msg: 'One-sided: do not double the column areas.' }] : [] }],
+      written: { prompt: 'Using the critical value or the p-value (your choice), state your decision and your conclusion in context.',
+        keys: [`Decides correctly with either method: TS = ${n(t, 3)} is ${rej ? 'in' : 'not in'} the rejection region TS ≤ −${n(c, 3)}, or the p-value (${BRK(br)}) is ${rej ? 'at most' : 'greater than'} α = ${a}; so ${rej ? 'reject' : 'fail to reject'} H₀.`, `Concludes in context about Hₐ: there ${rej ? 'is' : 'is not'} sufficient evidence that the ${ctx[0]} is less than ${mu0} ${ctx[1]}.`],
+        model: `Critical value: reject H₀ if TS ≤ −${n(c, 3)}; TS = ${n(t, 3)} is ${rej ? '' : 'not '}in the rejection region. (Or: from the t-table, ${BRK(br)}, exactly ${P4(px)}, which is ${rej ? 'at most' : 'greater than'} ${a}.) So we ${rej ? 'reject' : 'fail to reject'} H₀. There ${rej ? 'is' : 'is not'} sufficient evidence at the ${a} level that the ${ctx[0]} is less than ${mu0} ${ctx[1]}.` },
+      solution: [`\\(H_0: \\mu = ${mu0}\\), \\(H_a: \\mu < ${mu0}\\).`, `SE = \\(${tx(s, 1)}/\\sqrt{${k}} = ${tx(se)}\\).`, `\\(t = (${tx(xb, 1)} - ${mu0})/${tx(se)} = ${tx(t, 3)}\\), df = ${df}.`, `<strong>Critical value:</strong> lower-tailed, \\(\\alpha = ${a}\\): row df = ${row}, column ${a}, so \\(t^* = ${tx(c, 3)}\\). Reject if TS ≤ −${n(c, 3)}; ${n(t, 3)} ${rej ? '≤' : '>'} −${n(c, 3)}.`, `<strong>p-value:</strong> \\(P(T \\le ${tx(t, 3)})\\). In row df = ${br.row}, ${n(Math.abs(t), 3)} falls between the table values for ${BRK(br)}; exactly ${P4(px)}. It is ${rej ? 'at most' : 'greater than'} \\(\\alpha = ${a}\\).`, `Either way: ${rej ? 'reject' : 'fail to reject'} H₀.`],
       figure: root.RRPlot ? root.RRPlot.svg({ dist: 't', df, dir: 'lt', crit: c, ts: S.round(t, 3), alpha: a }) : '',
-      ti: `STAT ▸ TESTS ▸ 2:T-Test (Stats): μ0=${mu0}, x̄=${n(xb, 1)}, Sx=${n(s, 1)}, n=${k}, μ<μ0 (reports t). invT(${n(a)},${df}) = −${n(c, 3)}.`, excel: `=T.INV(${n(a)},${df})`
+      ti: `STAT ▸ TESTS ▸ 2:T-Test (Stats): μ0=${mu0}, x̄=${n(xb, 1)}, Sx=${n(s, 1)}, n=${k}, μ<μ0 (reports t). invT(${n(a)},${df}) = −${n(c, 3)}; tcdf(-1E99,${n(t, 3)},${df}) = ${P4(px)}.`, excel: `=T.INV(${n(a)},${df}) gives −t*; =T.DIST(${n(t, 3)},${df},TRUE) gives the p-value`
     };
   });
 })(globalThis);

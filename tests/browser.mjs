@@ -13,7 +13,7 @@ page.on('pageerror',e=>errors.push(e.message));
 page.on('console',m=>{if(m.type()==='error'&&!/ERR_FAILED|net::/.test(m.text()))errors.push(m.text());});
 await mkdir('test-results',{recursive:true});
 const fill=async(page,correct)=>{const q=await page.evaluate(()=>Course.practiceInstances[0].q);
- if(q.multi){for(const [i,p] of q.parts.entries()){const part=page.locator(`.part[data-i="${i}"]`);if(p.type==='choice')await part.locator(`input[value="${correct?p.answer:(p.answer+1)%p.options.length}"]`).check();else await part.locator('input').fill(correct?String(p.answer):String(p.answer+1000));}return q;}
+ if(q.multi){for(const [i,p] of q.parts.entries()){if(p.method&&p.method!==q.method)continue;const part=page.locator(`.part[data-i="${i}"]`);if(p.type==='pint'){const ins=part.locator('input');if(correct){await ins.nth(0).fill(String(p.lo));await ins.nth(1).fill(String(p.hi));}else{await ins.nth(0).fill('0.9');await ins.nth(1).fill('0.95');}continue;}if(p.type==='choice')await part.locator(`input[value="${correct?p.answer:(p.answer+1)%p.options.length}"]`).check();else await part.locator('input').fill(correct?String(p.answer):String(p.answer+1000));}return q;}
  if(q.choices)await page.locator(`input[name=answer][value="${correct?q.choices.indexOf(q.answer):q.choices.findIndex(a=>a!==q.answer)}"]`).check();else await page.locator('input[name=answer]').fill(correct?String(q.answer):'999999999');return q;};
 const force=(page,id,k)=>page.evaluate(([id,k])=>{const s=Course.practiceInstances[0].skills.find(s=>s.id===id);s.generate=k<0?s.sources.original:s.sources.steps[k];},[id,k]);
 
@@ -21,7 +21,7 @@ try{
  if(process.argv.includes('--visual')){
   for(const width of [1440,390])for(const theme of ['light','dark']){
    await page.setViewportSize({width,height:1000});await page.goto(`${base}/labs.html`,{waitUntil:'networkidle'});await page.evaluate(t=>{localStorage.setItem('stat2331-theme',JSON.stringify(t));document.documentElement.dataset.theme=t;},theme);
-   for(const id of ['regression','binomial','phat','clt','confidence','rejection','power']){
+   for(const id of ['regression','binomial','phat','clt','confidence','pvalue','rejection','power']){
     const lab=page.locator(`[data-lab=${id}]`);if(id==='confidence'){await lab.locator('[data-param=type]').selectOption('mu');}if(id==='clt'){await lab.locator('[data-param=n]').fill('30');await lab.locator('[data-param=n]').press('Tab');}if(id==='power'){await lab.locator('[data-param=truep]').fill('.65');await lab.locator('[data-param=truep]').press('Tab');}
     await lab.locator('[data-do=thousand]').click();await lab.scrollIntoViewIfNeeded();await lab.screenshot({path:`test-results/lab-${id}-${width}-${theme}.png`});assert.ok(!/NaN|undefined|Infinity/.test(await lab.innerText()));
    }
@@ -32,7 +32,7 @@ try{
  const routes=['index.html',...Array.from({length:8},(_,i)=>`module-${i+1}.html`),'practice.html','exams.html','choose.html','review.html','search.html','glossary.html','notebook.html','labs.html','tables.html'];
  for(const route of routes){await page.goto(`${base}/${route}`,{waitUntil:'networkidle'});await page.waitForFunction(()=>!!window.Course);await page.waitForFunction(()=>window.katex!==undefined);await page.evaluate(()=>Course.renderMath());assert.equal(await page.locator('.math-error').count(),0,route);assert.equal(await page.evaluate(()=>/\\\(|\\\[/.test(document.body.innerText)),false,route+' raw TeX');assert.equal(await page.locator('.math:not([data-rendered])').count(),0,route);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,route+' overflow');console.log('Page:',route);}
  // Stress every generator inside the real browser too.
- const count=await page.evaluate(()=>{let count=0;for(const skills of Object.values(Course.questions))for(const s of skills)for(let i=0;i<300;i++){const q=s.generate();if(/undefined|NaN|Infinity/.test(JSON.stringify(q)))throw Error(s.id);if(q.multi){for(const p of q.parts)if(p.type==='choice'?!(p.answer>=0&&p.answer<p.options.length):!Number.isFinite(p.answer))throw Error(s.id);}else if(q.choices?!q.choices.includes(q.answer):!Number.isFinite(q.answer))throw Error(s.id);count++;}return count;});
+ const count=await page.evaluate(()=>{let count=0;for(const skills of Object.values(Course.questions))for(const s of skills)for(let i=0;i<300;i++){const q=s.generate();if(/undefined|NaN|Infinity/.test(JSON.stringify(q)))throw Error(s.id);if(q.multi){for(const p of q.parts)if(p.type==='pint'?![p.lo,p.hi,p.exact].every(Number.isFinite):p.type==='choice'?!(p.answer>=0&&p.answer<p.options.length):!Number.isFinite(p.answer))throw Error(s.id);}else if(q.choices?!q.choices.includes(q.answer):!Number.isFinite(q.answer))throw Error(s.id);count++;}return count;});
  console.log('Browser-generated questions:',count);
  // Each skill, in each of its question styles, is answered correctly and incorrectly through its visible controls.
  let flows=0;
@@ -48,7 +48,7 @@ try{
    if(q.multi){assert.ok(await page.locator('.part.wrong').count()>=1,`${id}/${k} marks the wrong step`);assert.equal(await page.locator('.math-error').count(),0,`${id}/${k} math`);}else assert.equal(await page.locator('.feedback .check').count(),2);
    flows++;}
  }
- console.log(`PASS: all 64 skills answered correctly and incorrectly in the interface (${flows} question styles).`);
+ console.log(`PASS: all 65 skills answered correctly and incorrectly in the interface (${flows} question styles).`);
  await page.goto(`${base}/practice.html?module=1`,{waitUntil:'networkidle'});
  await force(page,'m1-proportion',-1);await page.locator('.skill-select').selectOption('m1-proportion');
  for(let i=0;i<3;i++){const a=await page.evaluate(()=>Course.practiceInstances[0].q.answer);await page.locator('input[name=answer]').fill(`${a*100}%`);await page.getByRole('button',{name:'Check my answer',exact:true}).click();await page.locator('[data-action=next]').click();}
@@ -116,11 +116,11 @@ try{
  {const ctxA=await browser.newContext({permissions:['clipboard-read','clipboard-write']}),pA=await ctxA.newPage();await pA.goto(`${base}/index.html`,{waitUntil:'load'});
   assert.equal((await pA.$eval('#mastery-percent',e=>getComputedStyle(e).getPropertyValue('--p'))).trim(),'0');
   await pA.evaluate(()=>{const ids=Object.values(Course.questions).flat().map(s=>s.id);const p={};ids.slice(0,8).forEach(id=>p[id]={streak:3,mastered:true,attempts:3});localStorage.setItem('stat2331-progress-v1',JSON.stringify(p));Course.refreshProgress();});
-  assert.equal(await pA.textContent('#mastery-percent'),'13%');
+  assert.equal(await pA.textContent('#mastery-percent'),'12%');
   await pA.locator('#copy-progress-link').click();const link=await pA.inputValue('#progress-link');assert.match(link,/\?progress=v1\.7{8}$/);
-  const ctxB=await browser.newContext(),pB=await ctxB.newPage();await pB.goto(link,{waitUntil:'load'});assert.equal(await pB.textContent('#mastery-total'),'0 of 64 skills mastered');
-  await pB.getByRole('button',{name:'Restore my progress'}).click();assert.equal(await pB.textContent('#mastery-total'),'8 of 64 skills mastered');assert.ok(!pB.url().includes('progress='));
-  await pB.locator('#reset-progress').click();await pB.locator('#reset-yes').click();assert.equal(await pB.textContent('#mastery-total'),'0 of 64 skills mastered');
+  const ctxB=await browser.newContext(),pB=await ctxB.newPage();await pB.goto(link,{waitUntil:'load'});assert.equal(await pB.textContent('#mastery-total'),'0 of 65 skills mastered');
+  await pB.getByRole('button',{name:'Restore my progress'}).click();assert.equal(await pB.textContent('#mastery-total'),'8 of 65 skills mastered');assert.ok(!pB.url().includes('progress='));
+  await pB.locator('#reset-progress').click();await pB.locator('#reset-yes').click();assert.equal(await pB.textContent('#mastery-total'),'0 of 65 skills mastered');
   await ctxA.close();await ctxB.close();}
  console.log('PASS: progress ring and progress links between browsers.');
 
@@ -169,9 +169,18 @@ try{
   for(const s of await page.locator('.nb-q summary').all())await s.click();await page.waitForTimeout(200);assert.equal(await page.evaluate(()=>/\\\(|\\\[/.test(document.querySelector('[data-panel=saved]').innerText)),false);assert.equal(await page.locator('.math-error').count(),0);
   await page.locator('[data-tab=bookmarks]').click();assert.equal(await page.locator('.nb-bm').count(),1);
   await page.locator('[data-tab=exams]').click();const open=page.locator('.nb-table a').first();assert.ok(await open.count());await open.click();await page.waitForLoadState('networkidle');assert.match(await page.locator('.exam-past').innerText(),/reviewing an attempt/);}
- console.log('PASS: spaced review and the mistakes page, review sheets, search, and glossary.');
+ // p-value approach: graph switch, practice method choice with a t-table interval, exam method choice, table helper.
+ {await page.goto(`${base}/module-8.html`,{waitUntil:'networkidle'});const g=page.locator('.rr-anim:has(.rr-mode)').first();await g.locator('[data-mode=pv]').click();await g.evaluate(e=>e.rrFinish());assert.match(await g.locator('.rrp-badgetext').textContent(),/p-value/);
+  await page.goto(`${base}/practice.html?module=8&skill=m8-ttest`,{waitUntil:'networkidle'});await page.evaluate(()=>{const P=Course.practiceInstances[0];P.skill.generate=P.skill.sources.steps[0];P.render();});
+  await page.locator('[data-action=method][data-m=pv]').click();const q=await page.evaluate(()=>Course.practiceInstances[0].q);assert.equal(q.method,'pv');
+  for(const [i,p] of q.parts.entries()){if(p.method&&p.method!=='pv')continue;const el=page.locator(`.part[data-i="${i}"]`);if(p.type==='choice')await el.locator(`input[value="${p.answer}"]`).check();else if(p.type==='pint')await el.locator('input').first().fill(p.exact.toFixed(4));else await el.locator('input').fill(String(p.answer));}
+  await page.getByRole('button',{name:'Check my answer',exact:true}).click();assert.equal(await page.locator('.feedback.correct').count(),1,'exact p-value accepted');
+  await page.goto(`${base}/exams.html`,{waitUntil:'networkidle'});await page.evaluate(()=>Course.exams.start('m8',false));const fr=page.locator('.exam-item:has(.method-switch)').last();await fr.locator('[data-fr-method=pv]').click();assert.equal(await fr.locator('.part-pint:visible').count(),1);await page.evaluate(()=>Course.exams.submit(false));
+  await page.goto(`${base}/tables.html`,{waitUntil:'networkidle'});await page.selectOption('#t-mode','pvalue');assert.match(await page.textContent('#t-result'),/0\.005 < p-value < 0\.01/);
+  await page.evaluate(()=>localStorage.removeItem('stat2331-test-method'));}
+ console.log('PASS: spaced review and the mistakes page, review sheets, search, glossary, and the p-value approach.');
  console.log('PASS: mastery persistence, percentage input, and mixed-set miss requeue.');
- await page.goto(`${base}/labs.html`,{waitUntil:'networkidle'});assert.equal(await page.locator('.lab').count(),10);
+ await page.goto(`${base}/labs.html`,{waitUntil:'networkidle'});assert.equal(await page.locator('.lab').count(),11);
  for(let i=0;i<10;i++){
   const lab=page.locator('.lab').nth(i);await lab.locator('[data-speed]').fill('10');
   await lab.locator('[data-do=one]').click();await page.waitForFunction(i=>!Course.labInstances[i].busy,i);assert.equal(await page.evaluate(i=>Course.labInstances[i].records.length,i),1);
@@ -200,5 +209,5 @@ try{
  }
  assert.deepEqual(errors,[],'No browser console or JavaScript errors');
  console.log('PASS: desktop and mobile; light and dark; rendered math; no JavaScript or console errors.');
- await writeFile('test-results/browser-summary.json',JSON.stringify({pages:12,skills:64,questions:count,labs:10,themes:2,widths:[1440,390],errors},null,2));
+ await writeFile('test-results/browser-summary.json',JSON.stringify({pages:19,skills:65,questions:count,labs:11,themes:2,widths:[1440,390],errors},null,2));
 }finally{await browser.close();}

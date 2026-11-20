@@ -16,7 +16,7 @@
       return [...mc, ...fr];
     } } };
   for (let m = 1; m <= 8; m++) EXAMS['m' + m] = { id: 'm' + m, title: `Module ${m} quiz`, sub: titles[m - 1], minutes: 35, module: m,
-    build: () => [...shuffle(B.mc[m].slice()), ...B.fr[m]] };
+    build: () => [...shuffle(B.mc[m].slice()).slice(0, 8), ...B.fr[m]] };
   const counts = ex => ex.id === 'final' ? { mc: 24, fr: 5 } : { mc: 8, fr: 2 };
   const maxPts = ex => { const c = counts(ex); return c.mc * 4 + c.fr * 8; };
 
@@ -61,10 +61,14 @@
   function itemHtml(it, i) {
     const q = it.q, head = `<div class="exam-q-head"><span class="exam-q-num">${i + 1}</span><span class="small muted">Module ${it.m} · ${it.kind === 'mc' ? '4 points' : '8 points · free response'}</span></div>`;
     if (it.kind === 'mc') return `<li class="exam-item" id="exam-q-${i}" data-i="${i}">${head}<fieldset><legend class="exam-stem">${T(q.stem)}</legend><div class="choices">${q.shown.map((o, k) => `<label class="choice"><input type="radio" name="q${i}" value="${k}"><span><b class="exam-letter">${LET[k]}</b> ${T(o.t)}</span></label>`).join('')}</div></fieldset></li>`;
-    const parts = q.parts.map((p, k) => {
-      const lab = `<span class="part-step">Step ${k + 1}</span>${T(p.label)}`;
-      if (p.type === 'choice') return `<fieldset class="part" data-k="${k}"><legend class="part-label">${lab}</legend><div class="choices">${p.options.map((op, j) => `<label class="choice"><input type="radio" name="q${i}p${k}" value="${j}"><span>${T(op)}</span></label>`).join('')}</div><div class="part-fb"></div></fieldset>`;
-      return `<div class="part" data-k="${k}"><label class="part-label" for="q${i}p${k}">${lab}</label><div class="part-input"><input id="q${i}p${k}" autocomplete="off" spellcheck="false" placeholder="number or arithmetic"></div><div class="part-fb"></div></div>`;
+    const hasM = q.parts.some(p => p.method); if (hasM && !it.method) it.method = C.testMethod.get();
+    const shared = q.parts.filter(p => !p.method).length, num = k => { const p = q.parts[k]; return p.method ? shared + q.parts.slice(0, k).filter(x => x.method === p.method).length + 1 : q.parts.slice(0, k).filter(x => !x.method).length + 1; };
+    const sw = hasM ? `<div class="method-switch" role="group" aria-label="Decide with"><span class="small muted">Decide with</span>${[['cv', 'Critical value'], ['pv', 'p-value']].map(([m, l]) => `<button type="button" data-fr-method="${m}" data-q="${i}" aria-pressed="${it.method === m}" class="${it.method === m ? 'primary' : ''}">${l}</button>`).join('')}<span class="small muted">Your choice; either method earns full credit.</span></div>` : '';
+    const parts = sw + q.parts.map((p, k) => {
+      const lab = `<span class="part-step">Step ${num(k)}</span>${T(p.label)}`, hid = p.method && p.method !== it.method ? ' hidden' : '', mt = p.method ? ` data-method="${p.method}"` : '';
+      if (p.type === 'pint') return `<div class="part part-pint" data-k="${k}"${mt}${hid}><label class="part-label" for="q${i}p${k}">${lab}</label><div class="part-input pint-row"><input id="q${i}p${k}" autocomplete="off" spellcheck="false" placeholder="e.g. 0.01" aria-label="Lower end, or the exact p-value"><span class="small">and</span><input autocomplete="off" spellcheck="false" placeholder="e.g. 0.025" aria-label="Upper end"></div><p class="small muted pint-help">The two t-table tail areas the p-value falls between (0 if below the smallest), or the exact p-value in the first box only.</p><div class="part-fb"></div></div>`;
+      if (p.type === 'choice') return `<fieldset class="part" data-k="${k}"${mt}${hid}><legend class="part-label">${lab}</legend><div class="choices">${p.options.map((op, j) => `<label class="choice"><input type="radio" name="q${i}p${k}" value="${j}"><span>${T(op)}</span></label>`).join('')}</div><div class="part-fb"></div></fieldset>`;
+      return `<div class="part" data-k="${k}"${mt}${hid}><label class="part-label" for="q${i}p${k}">${lab}</label><div class="part-input"><input id="q${i}p${k}" autocomplete="off" spellcheck="false" placeholder="number or arithmetic"></div><div class="part-fb"></div></div>`;
     }).join('');
     return `<li class="exam-item" id="exam-q-${i}" data-i="${i}">${head}<div class="exam-stem">${T(q.stem)}</div>${parts}<div class="part exam-written"><label class="part-label" for="q${i}w"><span class="part-step">Written</span>${T(q.written.prompt)}</label><textarea id="q${i}w" rows="4" placeholder="Write your answer in complete sentences."></textarea></div></li>`;
   }
@@ -78,6 +82,10 @@
     C.renderMath(host);
     host.oninput = progress; host.onchange = progress;
     host.onclick = e => {
+      const fm = e.target.closest('[data-fr-method]');
+      if (fm) { const it = state.items[Number(fm.dataset.q)], li = fm.closest('.exam-item'); it.method = fm.dataset.frMethod; C.testMethod.set(it.method);
+        li.querySelectorAll('[data-fr-method]').forEach(b => { const on = b === fm; b.setAttribute('aria-pressed', String(on)); b.classList.toggle('primary', on); });
+        li.querySelectorAll('.part[data-method]').forEach(pp => { pp.hidden = pp.dataset.method !== it.method; }); progress(); return; }
       const a = e.target.closest('button') && e.target.closest('button').dataset.action;
       if (a === 'submit') askSubmit();
       if (a === 'keep') host.querySelector('.exam-confirm').hidden = true;
@@ -91,7 +99,7 @@
   function answered(i) {
     const it = state.items[i], li = host.querySelector(`#exam-q-${i}`);
     if (it.kind === 'mc') return !!li.querySelector('input:checked');
-    const parts = [...li.querySelectorAll('.part[data-k]')].every(p => p.querySelector('input:checked') || (p.querySelector('input:not([type=radio])') && p.querySelector('input:not([type=radio])').value.trim()));
+    const parts = [...li.querySelectorAll('.part[data-k]')].filter(p => !p.hidden).every(p => p.querySelector('input:checked') || (p.querySelector('input:not([type=radio])') && p.querySelector('input:not([type=radio])').value.trim()));
     return parts && li.querySelector('textarea').value.trim() !== '';
   }
   function progress() {
@@ -123,7 +131,9 @@
   }
   function gradeFR(it, li) {
     const q = it.q, res = q.parts.map((p, k) => {
+      if (p.method && p.method !== it.method) return null;
       const el = li.querySelector(`.part[data-k="${k}"]`);
+      if (p.type === 'pint') { const raws = [...el.querySelectorAll('input')].map(x => x.value.trim()), vals = raws.map(r => { const v = parseNum(r, 0.5); return v == null ? NaN : v; }); const r = C.pInterval.check(p, vals); return { raw: raws.filter(Boolean).join(' and '), ok: r.ok, mis: r.mis || null }; }
       if (p.type === 'choice') { const s = el.querySelector('input:checked'); const pick = s ? Number(s.value) : null; return { pick, ok: pick === p.answer }; }
       const raw = el.querySelector('input').value, v = parseNum(raw, p.answer), tol = p.tol != null ? p.tol : Math.max(0.0015, Math.abs(p.answer) * 0.005);
       const close = (a, b, t) => Math.abs(a - b) <= t + 1e-12;
@@ -131,7 +141,8 @@
       const mis = v != null && !ok ? (p.mistakes || []).find(m => close(v, m.value, m.tol != null ? m.tol : tol)) : null;
       return { raw, v, ok, mis };
     });
-    return { parts: res, steps: Math.round(4 * res.filter(r => r.ok).length / res.length), written: li.querySelector('textarea').value };
+    const used = res.filter(Boolean);
+    return { parts: res, steps: Math.round(4 * used.filter(r => r.ok).length / used.length), written: li.querySelector('textarea').value };
   }
   function submit(timeUp) {
     if (!state || state.done) return;
@@ -153,8 +164,8 @@
       const msgs = [];
       if (it.kind === 'mc') { if (it.pick == null || it.pts === 4) return; msgs.push(it.q.shown[it.pick].why); }
       else {
-        it.g.parts.forEach((r, k) => { const p = it.q.parts[k]; if (r.ok) return; const m = p.type === 'choice' ? (p.why || {})[r.pick] : r.mis && r.mis.msg; if (m) msgs.push(`${p.label}: ${m}`); });
-        if (it.g.parts.every(r => r.ok)) return;
+        it.g.parts.forEach((r, k) => { const p = it.q.parts[k]; if (!r || r.ok) return; const m = p.type === 'choice' ? (p.why || {})[r.pick] : r.mis && r.mis.msg; if (m) msgs.push(`${p.label}: ${m}`); });
+        if (it.g.parts.every(r => !r || r.ok)) return;
       }
       C.mistakes.log({ source: 'exam', module: it.m, skill: 'exam', title: `${state.ex.title}, question ${i + 1}`, msgs });
     });
@@ -188,15 +199,17 @@
       const best = q.shown.findIndex(o => o.tier === 4);
       return `<li class="exam-item reviewed" id="exam-q-${i}">${head}<div class="exam-stem">${T(q.stem)}</div><ul class="exam-options">${q.shown.map((o, k) => `<li class="exam-option ${k === it.pick ? 'picked' : ''} ${k === best ? 'best' : ''}"><div><b class="exam-letter">${LET[k]}</b> ${T(o.t)}</div><div class="exam-tier t${o.tier}">${o.tier} pt${o.tier === 1 ? '' : 's'}${k === it.pick ? ' · your answer' : ''}</div>${k === it.pick || k === best ? `<p class="small">${T(o.why)}</p>` : `<details><summary class="small">Why ${o.tier} point${o.tier === 1 ? '' : 's'}?</summary><p class="small">${T(o.why)}</p></details>`}</li>`).join('')}</ul>${it.pick == null ? '<p class="small"><strong>No answer was chosen.</strong></p>' : ''}<p class="small exam-links">Review: <a href="module-${it.m}.html">Module ${it.m} notes</a> · <a href="practice.html?module=${it.m}">practice</a> · <button type="button" class="linkish" data-nb-save data-module="${it.m}" data-source="exam" data-title="${E(state.ex.title)}, question ${i + 1}" data-correct="${it.kind === 'mc' ? it.pts === 4 : ''}">☆ Save to my notebook</button></p></li>`;
     }
-    const g = it.g, parts = q.parts.map((p, k) => {
-      const r = g.parts[k], ans = p.type === 'choice' ? T(p.options[p.answer]) : (p.show || Number(Number(p.answer).toFixed(4)).toString());
+    let sn = 0;
+    const g = it.g, parts = (it.method ? `<p class="small muted">You decided with the ${it.method === 'pv' ? 'p-value' : 'critical value'}. The worked solution shows both methods.</p>` : '') + q.parts.map((p, k) => {
+      const r = g.parts[k]; if (!r) return ''; sn++;
+      const ans = p.type === 'choice' ? T(p.options[p.answer]) : p.type === 'pint' ? C.pInterval.show(p) : (p.show || Number(Number(p.answer).toFixed(4)).toString());
       const yours = p.type === 'choice' ? (r.pick == null ? '—' : T(p.options[r.pick])) : (r.raw && r.raw.trim() ? E(r.raw) : '—');
       const note = r.ok ? '' : p.type === 'choice' ? ((p.why || {})[r.pick] || '') : (r.mis ? r.mis.msg : '');
-      return `<div class="part ${r.ok ? 'right' : 'wrong'}"><div class="part-label"><span class="part-step">Step ${k + 1}</span>${T(p.label)}</div><div class="part-fb"><strong>${r.ok ? '✓ Correct' : '✗ Not yet'}</strong> Your answer: ${yours}${r.ok ? '' : ` · Answer: <strong>${ans}</strong>`}${note ? `<br><span>${T(note)}</span>` : ''}</div></div>`;
+      return `<div class="part ${r.ok ? 'right' : 'wrong'}"><div class="part-label"><span class="part-step">Step ${sn}</span>${T(p.label)}</div><div class="part-fb"><strong>${r.ok ? '✓ Correct' : '✗ Not yet'}</strong> Your answer: ${yours}${r.ok ? '' : ` · Answer: <strong>${ans}</strong>`}${note ? `<br><span>${T(note)}</span>` : ''}</div></div>`;
     }).join('');
     const w = q.written;
     return `<li class="exam-item reviewed" id="exam-q-${i}">${head}<div class="exam-stem">${T(q.stem)}</div>${parts}
-      <div class="feedback"><h4>Steps: ${g.steps} of 4 points</h4><strong>By hand</strong><ol>${q.solution.map(s => `<li>${T(s)}</li>`).join('')}</ol>${q.figure || ''}${q.ti || q.excel ? `<div class="checks">${q.ti ? `<div class="check"><strong>TI-84 check</strong>${E(q.ti)}</div>` : ''}${q.excel ? `<div class="check"><strong>Excel check</strong><code>${E(q.excel)}</code></div>` : ''}</div>` : ''}</div>
+      <div class="feedback"><h4>Steps: ${g.steps} of 4 points</h4><strong>By hand</strong><ol>${q.solution.map(s => `<li>${T(s)}</li>`).join('')}</ol>${it.method && q.figure ? q.figure.replace('"mode":"cv"', `"mode":"${it.method}"`) : (q.figure || '')}${q.ti || q.excel ? `<div class="checks">${q.ti ? `<div class="check"><strong>TI-84 check</strong>${E(q.ti)}</div>` : ''}${q.excel ? `<div class="check"><strong>Excel check</strong><code>${E(q.excel)}</code></div>` : ''}</div>` : ''}</div>
       <div class="exam-rubric"><h4>Written: score yourself</h4><p class="small muted">${T(w.prompt)}</p><div class="exam-yours"><strong>Your answer</strong><p>${g.written.trim() ? E(g.written).replace(/\n/g, '<br>') : '<em>No answer written.</em>'}</p></div>
       <div class="exam-keys"><strong>Rubric</strong><ol><li><b>Key 1.</b> ${T(w.keys[0])}</li><li><b>Key 2.</b> ${T(w.keys[1])}</li></ol><p class="small"><b>4</b> both keys · <b>2</b> one key · <b>1</b> accurate but incomplete · <b>0</b> inaccurate or blank</p></div>
       <div class="exam-model"><strong>Model answer</strong><p>${T(w.model)}</p></div>
@@ -242,7 +255,7 @@
     if (!state || !state.attemptId) return;
     let all = C.storage.read(DKEY, {});
     all[state.attemptId] = { exam: state.ex.id, date: a ? a.date : new Date().toISOString(), timed: state.timed, timeUp: state.timeUp, minutes: state.minutes,
-      items: state.items.map(it => ({ kind: it.kind, m: it.m, id: it.id, q: it.q, pick: it.pick, pts: it.pts, g: it.g, self: it.self })) };
+      items: state.items.map(it => ({ kind: it.kind, m: it.m, id: it.id, q: it.q, pick: it.pick, pts: it.pts, g: it.g, self: it.self, method: it.method })) };
     // keep the 20 newest attempts of each exam
     const byExam = {}; Object.entries(all).forEach(([id, d]) => (byExam[d.exam] = byExam[d.exam] || []).push([id, d.date]));
     Object.values(byExam).forEach(l => l.sort((x, y) => y[1].localeCompare(x[1])).slice(20).forEach(([id]) => delete all[id]));

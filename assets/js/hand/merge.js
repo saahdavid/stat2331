@@ -18,7 +18,7 @@
     5: { 'm5-empirical': ['m5-empirical'], 'm5-z': ['m5-z'], 'm5-normal': ['m5-normprob'], 'm5-inverse': ['m5-inverse'], 'm5-bins': ['m5-bins'], 'm5-binomial': ['m5-binom'], 'm5-moments': ['m5-binom-musd'], 'm5-approx': ['m5-approx'] },
     6: { 'm6-phat': ['m6-phat'], 'm6-minn': ['m6-minn'], 'm6-phatprob': ['m6-phatprob'], 'm6-xbarprob': ['m6-xbarprob'], 'm6-middle': ['m6-middle'], 'm6-clt': ['m6-clt'], 'm6-spread': ['m6-nchange'] },
     7: { 'm7-pci': ['m7-cip'], 'm7-tstar': ['m7-tstar'], 'm7-muci': ['m7-cimu'], 'm7-read': ['m7-interval'], 'm7-np': ['m7-n-p'], 'm7-nmu': ['m7-n-mu'], 'm7-interpret': ['m7-interp'], 'm7-margin': ['m7-margin'] },
-    8: { 'm8-hypotheses': ['m8-hyp'], 'm8-ztest': ['m8-ztest'], 'm8-ttest': ['m8-ttest'], 'm8-decision': ['m8-decide'], 'm8-errors': ['m8-errors'], 'm8-power': ['m8-power'], 'm8-ci': ['m8-citest', 'm8-practical'] }
+    8: { 'm8-hypotheses': ['m8-hyp'], 'm8-ztest': ['m8-ztest'], 'm8-ttest': ['m8-ttest'], 'm8-decision': ['m8-decide'], 'm8-errors': ['m8-errors'], 'm8-power': ['m8-power'], 'm8-ci': ['m8-citest', 'm8-practical'], 'm8-pval': ['m8-pv'] }
   };
 
   // \( … \) and \[ … \] → the .math spans that Course.renderMath typesets
