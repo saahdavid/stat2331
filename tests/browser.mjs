@@ -117,12 +117,15 @@ try{
   assert.equal((await pA.$eval('#mastery-percent',e=>getComputedStyle(e).getPropertyValue('--p'))).trim(),'0');
   await pA.evaluate(()=>{const ids=Object.values(Course.questions).flat().map(s=>s.id);const p={};ids.slice(0,8).forEach(id=>p[id]={streak:3,mastered:true,attempts:3});localStorage.setItem('stat2331-progress-v1',JSON.stringify(p));Course.refreshProgress();});
   assert.equal(await pA.textContent('#mastery-percent'),'12%');
-  await pA.locator('#copy-progress-link').click();const link=await pA.inputValue('#progress-link');assert.match(link,/\?progress=v1\.7{8}$/);
+  await pA.locator('#copy-progress-link').click();await pA.waitForFunction(()=>document.querySelector('#progress-link').value);const link=await pA.inputValue('#progress-link');assert.equal(await pA.evaluate(()=>navigator.clipboard.readText()),link);assert.match(link,/\?progress=v1\.7{8}$/);
   const ctxB=await browser.newContext(),pB=await ctxB.newPage();await pB.goto(link,{waitUntil:'load'});assert.equal(await pB.textContent('#mastery-total'),'0 of 65 skills mastered');
   await pB.getByRole('button',{name:'Restore my progress'}).click();assert.equal(await pB.textContent('#mastery-total'),'8 of 65 skills mastered');assert.ok(!pB.url().includes('progress='));
   await pB.locator('#reset-progress').click();await pB.locator('#reset-yes').click();assert.equal(await pB.textContent('#mastery-total'),'0 of 65 skills mastered');
+  {const ctxC=await browser.newContext({permissions:['clipboard-read','clipboard-write']}),pC=await ctxC.newPage();await pC.goto(`${base}/index.html`,{waitUntil:'load'});await pC.evaluate(l=>navigator.clipboard.writeText(l),link);
+   await pC.locator('#paste-progress').click();await pC.waitForFunction(()=>/8 of/.test(document.querySelector('#mastery-total').textContent));
+   await pC.evaluate(()=>localStorage.clear());await pC.reload({waitUntil:'load'});await pC.locator('#restore-input').click();await pC.keyboard.press('Control+V');await pC.waitForFunction(()=>/8 of/.test(document.querySelector('#mastery-total').textContent));await ctxC.close();}
   await ctxA.close();await ctxB.close();}
- console.log('PASS: progress ring and progress links between browsers.');
+ console.log('PASS: progress ring and progress links between browsers (one-click copy, Paste button, paste to restore).');
 
  // Hints reveal one step at a time; a hinted correct answer does not grow the streak.
  {await page.goto(`${base}/practice.html?module=5`,{waitUntil:'networkidle'});await page.evaluate(()=>localStorage.removeItem('stat2331-progress-v1'));await page.reload({waitUntil:'networkidle'});

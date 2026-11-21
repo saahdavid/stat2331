@@ -54,9 +54,27 @@
  const countM=p=>Object.values(p).filter(v=>v&&v.mastered).length;
  const merge=incoming=>{const p=Course.progress();for(const [id,v] of Object.entries(incoming)){const o=p[id]||{streak:0,mastered:false,attempts:0};p[id]={streak:Math.max(o.streak||0,v.streak),mastered:!!(o.mastered||v.mastered),attempts:o.attempts||0,interval:o.interval||(v.mastered?3:undefined),due:o.due||(v.mastered?Date.now()+3*864e5:undefined)};}storage.write('stat2331-progress-v1',p);progress();};
  const msg=t=>{if($('#progress-message'))$('#progress-message').textContent=t;};
- $('#copy-progress-link')?.addEventListener('click',async()=>{const link=await linkFor(),box=$('#progress-link-box'),inp=$('#progress-link');inp.value=link;box.hidden=false;const nN=notesCount(notesData()),done=()=>msg(`Link copied. It holds ${countM(Course.progress())} mastered skill${countM(Course.progress())===1?'':'s'}${nN?` and ${nN} notebook item${nN===1?'':'s'} (mistakes, saved questions, bookmarks, exam scores)`:''}. Send it to yourself by email, then open it on your other device.${link.length>8000?' The link is long, so email works better than a text message.':''}`);const fallback=()=>{inp.focus();inp.select();msg('Your link is selected below. Press Ctrl+C (or ⌘C on a Mac) to copy it.');};try{navigator.clipboard.writeText(link).then(done,fallback);}catch{fallback();}});
- $('#progress-link')?.addEventListener('focus',e=>e.target.select());
- $('#restore-form')?.addEventListener('submit',async e=>{e.preventDefault();const raw=$('#restore-input').value.trim(),data=decode(raw);if(!data){msg('That does not look like a progress link. Paste the whole link you copied, starting with https://.');return;}let nb=null;try{nb=await unpackNotes(new URL(raw).searchParams.get('nb'));}catch(err){}merge(data);mergeNotes(nb);msg(`Progress restored: ${countM(Course.progress())} of ${Course.skillTotal()} skills mastered${nb?`, plus ${notesCount(nb)} notebook items`:''}.`);$('#restore-input').value='';});
+ // The link is built ahead of time, so a click copies it at once (browsers refuse a copy that waits on other work).
+ let ready=null,readySig='';const sig=()=>encode()+'|'+JSON.stringify(notesData()||0).length;const prep=async()=>{const s=sig();try{ready=await linkFor();readySig=s;}catch(e){ready=null;}return ready;};
+ if($('#copy-progress-link')){prep();addEventListener('focus',prep);addEventListener('storage',prep);document.addEventListener('visibilitychange',()=>{if(!document.hidden)prep();});}
+ const linkMsg=link=>{const nN=notesCount(notesData()),m=countM(Course.progress());return `Link copied. It holds ${m} mastered skill${m===1?'':'s'}${nN?` and ${nN} notebook item${nN===1?'':'s'} (mistakes, saved questions, bookmarks, exam scores)`:''}. Email it to yourself, then open it on your other device.${link.length>8000?' The link is long, so email works better than a text message.':''}`;};
+ const flash=(btn,text)=>{const s=btn&&btn.querySelector('span');if(!s)return;const old=s.dataset.label||s.textContent;s.dataset.label=old;s.textContent=text;btn.classList.add('copied');clearTimeout(btn._t);btn._t=setTimeout(()=>{s.textContent=old;btn.classList.remove('copied');},2500);};
+ const copyLink=(btn)=>{const box=$('#progress-link-box'),inp=$('#progress-link');
+  const fallback=link=>{inp.value=link;box.hidden=false;inp.focus();inp.select();msg('Your link is selected in the box below. Press Ctrl+C (⌘C on a Mac) to copy it.');};
+  const ok=link=>{inp.value=link;box.hidden=false;msg(linkMsg(link));flash(btn,'✓ Copied');};
+  const link=btn.id==='copy-link-again'&&inp.value?inp.value:ready&&readySig===sig()?ready:null;
+  if(link){try{navigator.clipboard.writeText(link).then(()=>ok(link),()=>fallback(link));}catch(e){fallback(link);}prep();return;}
+  // not built yet: hand the browser a promise of the text, which keeps the click's permission
+  const p=linkFor();
+  try{if(window.ClipboardItem&&navigator.clipboard.write){navigator.clipboard.write([new ClipboardItem({'text/plain':p.then(l=>new Blob([l],{type:'text/plain'}))})]).then(()=>p.then(ok),()=>p.then(fallback));return;}}catch(e){}
+  p.then(l=>{try{navigator.clipboard.writeText(l).then(()=>ok(l),()=>fallback(l));}catch(e){fallback(l);}});};
+ $('#copy-progress-link')?.addEventListener('click',e=>copyLink(e.currentTarget));
+ $('#copy-link-again')?.addEventListener('click',e=>copyLink(e.currentTarget));
+ for(const ev of ['focus','click'])$('#progress-link')?.addEventListener(ev,e=>e.target.select());
+ const restore=async raw=>{raw=(raw||'').trim();const data=decode(raw);if(!data){msg('That does not look like a progress link. Paste the whole link you copied, starting with https://.');return false;}let nb=null;try{nb=await unpackNotes(new URL(raw).searchParams.get('nb'));}catch(err){}merge(data);mergeNotes(nb);msg(`Progress restored: ${countM(Course.progress())} of ${Course.skillTotal()} skills mastered${nb?`, plus ${notesCount(nb)} notebook item${notesCount(nb)===1?'':'s'}`:''}.`);$('#restore-input').value='';prep();return true;};
+ $('#restore-form')?.addEventListener('submit',e=>{e.preventDefault();restore($('#restore-input').value);});
+ $('#restore-input')?.addEventListener('paste',e=>{const text=e.clipboardData&&e.clipboardData.getData('text');if(text&&decode(text.trim())){e.preventDefault();$('#restore-input').value=text.trim();restore(text);}});
+ $('#paste-progress')?.addEventListener('click',async e=>{const btn=e.currentTarget;try{const text=await navigator.clipboard.readText();if(!text||!text.trim()){msg('Your clipboard is empty. Copy the link first, then press Paste.');return;}$('#restore-input').value=text.trim();if(await restore(text))flash(btn,'✓ Restored');}catch(err){$('#restore-input').focus();msg('This browser did not allow reading the clipboard. Click in the box and press Ctrl+V (⌘V on a Mac), or right-click and choose Paste.');}});
  // Opening a progress link: ask before changing anything.
  {const q=new URLSearchParams(location.search).get('progress');if(q){(async()=>{const data=decode(q),nb=await unpackNotes(new URLSearchParams(location.search).get('nb'));const clean=()=>{const u=new URL(location.href);u.searchParams.delete('progress');u.searchParams.delete('nb');history.replaceState(null,'',u.pathname+u.search+u.hash);};
   if(data){const n=countM(data),bar=document.createElement('div');bar.className='restore-banner';bar.setAttribute('role','alertdialog');bar.setAttribute('aria-labelledby','restore-banner-msg');bar.innerHTML=`<p id="restore-banner-msg"><strong>Restore your progress?</strong> This link holds ${n} mastered skill${n===1?'':'s'}${nb?` and ${notesCount(nb)} notebook item${notesCount(nb)===1?'':'s'}`:''}. It will be added to anything already saved in this browser.</p><div class="answer-row"><button class="primary" data-r="yes">Restore my progress</button><button data-r="no">Not now</button></div>`;
@@ -64,7 +82,7 @@
   else clean();})();}}
  $('#reset-progress')?.addEventListener('click',()=>{const c=$('#reset-confirm');c.hidden=false;$('#reset-cancel').focus();});
  $('#reset-cancel')?.addEventListener('click',()=>{$('#reset-confirm').hidden=true;$('#reset-progress').focus();});
- $('#reset-yes')?.addEventListener('click',()=>{storage.write('stat2331-progress-v1',{});progress();$('#reset-confirm').hidden=true;msg('Saved mastery reset.');});
+ $('#reset-yes')?.addEventListener('click',()=>{setTimeout(prep,0);storage.write('stat2331-progress-v1',{});progress();$('#reset-confirm').hidden=true;msg('Saved mastery reset.');});
  if(!storage.write('stat2331-storage-check',true)){document.querySelectorAll('.save-note').forEach(el=>el.textContent='Browser storage is unavailable. This session works, but mastery will not persist.');}
  Course.renderMath();window.addEventListener('load',()=>Course.renderMath());
 })();

@@ -222,3 +222,5 @@ button.linkish{background:none;border:0;padding:0;font:inherit;color:var(--blue)
 .method-switch{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;margin:4px 0 14px;padding:10px 12px;border:1px dashed var(--line);border-radius:8px;background:var(--sheet)}.method-switch button{font-size:14px;padding:6px 12px;min-height:0}
 .pint-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px}.pint-row input{width:9em;max-width:40vw}.pint-help{margin:6px 0 0}
 .part[hidden]{display:none!important}
+.link-row{display:flex;gap:8px;align-items:stretch;flex-wrap:wrap;margin-top:4px}.link-row input{flex:1 1 220px;min-width:0}.icon-btn,#copy-progress-link{display:inline-flex;align-items:center;gap:6px}.icon-btn.copied,#copy-progress-link.copied{border-color:var(--green);color:var(--green)}#copy-progress-link.copied{background:var(--green);color:var(--paper)}
+.progress-paste{margin-top:14px}.progress-paste label{display:block}
