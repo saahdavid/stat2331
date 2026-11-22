@@ -116,7 +116,7 @@ GitHub documentation: [Configuring a publishing source](https://docs.github.com/
 src/module-N.html               Editable module content fragments
 src/tables.html                 Reference-page content
 scripts/build.mjs              Shared page shell and static page generator
-assets/css/style.css           Themes, typography, graph-paper design, responsive rules
+assets/css/style.css           Themes (SMU Red #CC0035 with SMU teal, yellow and black; no SMU Blue, which STAT 4340 uses), typography, graph-paper design, whole-word wrapping, responsive rules
 assets/js/stats.js              Numerical core and arithmetic parser
 assets/js/questions/shared.js   Question helpers and course metadata
 assets/js/questions/module-N.js Eight skill generators per module

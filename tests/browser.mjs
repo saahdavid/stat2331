@@ -110,6 +110,8 @@ try{
  for(let m=1;m<=8;m++){await page.goto(`${base}/module-${m}.html`,{waitUntil:'networkidle'});
   const left=await page.evaluate(()=>{const RX=/p̂|x̄|ŷ|[μσ√≤≥₀₁ₐ²]/;const out=[];const w=document.createTreeWalker(document.querySelector('main'),NodeFilter.SHOW_TEXT);let n;while(n=w.nextNode()){const el=n.parentElement;if(el.closest('.katex,svg,code,kbd,.screen,.xl,.check,[data-lab],button,select,.rr-anim,.eyebrow'))continue;if(RX.test(n.nodeValue))out.push(n.nodeValue.trim().slice(0,60));}return out;});
   assert.deepEqual(left,[],`module ${m} has untypeset math`);assert.equal(await page.locator('.math-error').count(),0);}
+ // Whole-word wrapping: code, calculator screens, and checks never break inside a word.
+ {await page.goto(`${base}/module-5.html`,{waitUntil:'networkidle'});const bad=await page.evaluate(()=>[...document.querySelectorAll('code,.screen,.check,.calculator,.exam-yours p')].map(e=>getComputedStyle(e)).filter(s=>s.overflowWrap==='anywhere'||s.wordBreak==='break-all').length);assert.equal(bad,0,'mid-word wrapping');}
  console.log('PASS: inline math typeset in all module notes.');
 
  // Progress ring starts empty; a progress link moves mastery to another browser after the student confirms.
