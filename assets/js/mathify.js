@@ -83,7 +83,15 @@
   }
 
   /* ---------- group tokens into candidate runs ---------- */
+  // Calculator and spreadsheet calls (tcdf(…), normalcdf(…), T.DIST(…), NORM.S.DIST(…)) stay plain text.
+  const CODE = /=?\b(?:tcdf|normalcdf|normalpdf|invNorm|invT|binompdf|binomcdf|1-PropZTest|1-PropZInt|TInterval|ZInterval|T-Test|Z-Test)\([^()]*\)|=?\b[A-Z]{1,6}(?:\.[A-Z0-9]{1,4})+\b(?:\([^()]*\))?/g;
   function convert(text) {
+    if (CODE.test(text)) { CODE.lastIndex = 0; const out = []; let last = 0, m;
+      while ((m = CODE.exec(text))) { if (m.index > last) out.push(...convert1(text.slice(last, m.index))); out.push({ text: m[0] }); last = m.index + m[0].length; }
+      if (last < text.length) out.push(...convert1(text.slice(last))); CODE.lastIndex = 0; return out; }
+    CODE.lastIndex = 0; return convert1(text);
+  }
+  function convert1(text) {
     const toks = tokenize(text), parts = [];
     let run = [], depth = 0;
     const flush = () => { if (run.length) parts.push(...finish(run)); run = []; depth = 0; };

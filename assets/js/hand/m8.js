@@ -41,7 +41,7 @@
   const RR_SHADE = (dir, c, hi) => dir === "gt" ? [[c, hi]] : dir === "lt" ? [[-hi, -c]] : [[-hi, -c], [c, hi]];
   const COL = (alpha, dir) => dir === "ne" ? `column \\(\\alpha/2 = ${n(alpha / 2)}\\)` : `column \\(\\alpha = ${alpha}\\)`;
 
-  // ---- p-values (normal table for z; t-table interval plus the exact value for t) ----
+  // ---- p-values (normal table for z; the exact value from tcdf / T.DIST for t) ----
   const PV = (dist, ts, dir, df) => { const o = RRPlot.norm({ dist, df, dir, ts, crit: 1 }); return dist === "z" ? o.p : RRPlot.pValue(o); };
   const TB = (ts, dir, df) => RRPlot.bracket(RRPlot.norm({ dist: "t", df, dir, ts, crit: 1 }));
   const P4 = v => v < 0.0001 ? "less than 0.0001" : v.toFixed(4);
@@ -54,11 +54,16 @@
     if (dir === "lt" && Math.abs(1 - left - p) > 0.001) mis.push({ value: 1 - left, tol: 0.00051, msg: "For \\(H_a\\) with <, the p-value is the area to the left of z: the table value itself." });
     return { p, zr, left, part: { type: "num", method: "pv", label: "p-value (normal table, 4 decimals)", answer: p, tol: 0.00051, show: P4(p), mistakes: mis } };
   }
+  // t p-value: the exact value from the TI-84 (tcdf) or Excel (T.DIST), not a t-table interval
+  const TI_T = (dir, t, df) => dir === "gt" ? `tcdf(${n(t, 3)}, 1E99, ${df})` : dir === "lt" ? `tcdf(-1E99, ${n(t, 3)}, ${df})` : `2*tcdf(${n(Math.abs(t), 3)}, 1E99, ${df})`;
+  const XL_T = (dir, t, df) => dir === "gt" ? `=T.DIST.RT(${n(t, 3)},${df})` : dir === "lt" ? `=T.DIST(${n(t, 3)},${df},TRUE)` : `=T.DIST.2T(${n(Math.abs(t), 3)},${df})`;
+  const HOW_T = (dir, t, df) => `on the TI-84, <span class="no-mathify">${TI_T(dir, t, df)}</span>; in Excel, <code>${XL_T(dir, t, df)}</code>`;
   function tPvPart(t, dir, df) {
-    const b = TB(t, dir, df), exact = PV("t", t, dir, df), mis = [];
-    if (dir === "ne") mis.push({ lo: b.lo / 2, hi: b.hi / 2, msg: "Two-sided: double both tail areas." }, { value: exact / 2, msg: "Two-sided: double the one-tail area." });
-    else if (b.hi * 2 <= 1) mis.push({ lo: b.lo * 2, hi: b.hi * 2, msg: "One-sided: do not double the tail areas." });
-    return { b, exact, part: { type: "pint", method: "pv", label: "p-value: between which two t-table areas? (or the exact value)", lo: b.lo, hi: b.hi, exact, mistakes: mis } };
+    const exact = PV("t", t, dir, df), mis = [], tol = 0.0006;
+    if (dir === "ne") mis.push({ value: exact / 2, tol, msg: "That is one tail. Hₐ is ≠, so double it (or use T.DIST.2T / 2*tcdf)." });
+    else if (2 * exact <= 1) mis.push({ value: 2 * exact, tol, msg: "One-sided: do not double the tail area." });
+    if (Math.abs(1 - exact - exact) > 0.01) mis.push({ value: 1 - exact, tol, msg: dir === "gt" ? "That is the area to the left. For Hₐ with >, the p-value is the area to the right of t." : dir === "lt" ? "That is the area to the right. For Hₐ with <, the p-value is the area to the left of t." : "That is the area between the tails, not beyond them." });
+    return { exact, part: { type: "num", method: "pv", label: `p-value (exact, 4 decimals: tcdf on the TI-84 or T.DIST in Excel, df = ${df})`, answer: exact, tol, show: P4(exact), mistakes: mis } };
   }
   const DEC = (method, reject, alpha, detail) => ({ type: "choice", method, label: `Decision at \\(\\alpha = ${alpha}\\)`, options: ["Reject \\(H_0\\)", "Fail to reject \\(H_0\\)"], answer: reject ? 0 : 1, fixed: true, why: { [reject ? 1 : 0]: detail } });
 
@@ -115,7 +120,7 @@
     const tTarget = (dir === "lt" ? -1 : dir === "gt" ? 1 : R.pick([-1, 1])) * R.int(30, 450) / 100;
     const xbar = S.round(mu0 + tTarget * se, dec + 2);
     const t = (xbar - mu0) / se, row = S.tTableRow(df), ts = tCrit(df, alpha, dir), reject = IN_RR(t, dir, ts), pt = tPvPart(t, dir, df);
-    if ((pt.exact <= alpha) !== reject || (pt.b.lo < alpha && alpha < pt.b.hi)) return tTest();  // unlisted df put t on the boundary: draw again
+    if ((pt.exact <= alpha) !== reject) return tTest();  // unlisted df put t on the boundary: draw again
     const tsOther = tCrit(df, alpha, dir === "ne" ? "gt" : "ne"), tsN = S.tTableValue(S.tTableRow(nn), dir === "ne" ? alpha / 2 : alpha), zs = zCrit(alpha, dir);
     const tMis = [{ value: tsOther, tol: 0.0015, msg: dir === "ne" ? "Two-sided: use column \\(\\alpha/2\\), not \\(\\alpha\\)." : "One-sided: use column \\(\\alpha\\), not \\(\\alpha/2\\)." }, { value: zs, tol: 0.0015, msg: "That is \\(z^*\\). For a mean with \\(s\\), use the row \\(df = n - 1\\)." }];
     if (Math.abs(tsN - ts) > 0.0005) tMis.push({ value: tsN, tol: 0.0015, msg: "That row is \\(df = n\\). Use \\(df = n - 1\\)." });
@@ -128,13 +133,13 @@
         { type: "num", method: "cv", label: "Critical value \\(t^*\\) from the t-table", answer: ts, tol: 0.0015, show: ts.toFixed(3), mistakes: tMis },
         DEC("cv", reject, alpha, `Rejection region: ${RULE(dir, ts.toFixed(3))}. \\(t = ${S.fmt(t, 3).replace("−", "-")}\\) is ${reject ? "in" : "not in"} it.`),
         pt.part,
-        DEC("pv", reject, alpha, `${BR(pt.b)} (exactly ${P4(pt.exact)}), which is ${reject ? "at most" : "greater than"} \\(\\alpha = ${alpha}\\).`)
+        DEC("pv", reject, alpha, `p-value = ${P4(pt.exact)}, which is ${reject ? "at most" : "greater than"} \\(\\alpha = ${alpha}\\).`)
       ],
       hand: [
         T`\(H_0: \mu = ${mu0}\) versus \(H_a: \mu ${SYM[dir]} ${mu0}\). Conditions: random sample; no extreme skew or outliers.`,
         T`\(t = \dfrac{${n(xbar, dec + 2)} - ${mu0}}{${n(s)}/\sqrt{${nn}}} = \dfrac{${f4(xbar - mu0)}}{${f4(se)}} = ${S.fmt(t, 3).replace("−", "-")}\), with \(df = ${nn} - 1 = ${df}\).`,
         `<strong>Critical-value method:</strong> row \\(df = ${row}\\)${row !== df ? ` (${df} is not in the table, so use the next smaller row)` : ""}, ${COL(alpha, dir)}: \\(t^* = ${ts.toFixed(3)}\\). Reject \\(H_0\\) if ${RULE(dir, ts.toFixed(3))}. \\(t = ${S.fmt(t, 3).replace("−", "-")}\\) is ${reject ? "" : "not "}in the rejection region.`,
-        `<strong>p-value method:</strong> p-value = ${PFORM(dir, "T", S.fmt(t, 3).replace("−", "-"))}. In row \\(df = ${pt.b.row}\\), find where ${S.fmt(Math.abs(t), 3)} falls among the table values${dir === "ne" ? " and double the column areas" : ""}: ${BR(pt.b)}. Exactly, p-value = ${P4(pt.exact)}. It is ${reject ? "at most" : "greater than"} \\(\\alpha = ${alpha}\\).`,
+        `<strong>p-value method:</strong> p-value = ${PFORM(dir, "T", S.fmt(t, 3).replace("−", "-"))}. With \\(df = ${df}\\): ${HOW_T(dir, t, df)}. p-value = ${P4(pt.exact)}. It is ${reject ? "at most" : "greater than"} \\(\\alpha = ${alpha}\\).`,
         `Either way, ${reject ? "reject" : "fail to reject"} \\(H_0\\). There ${reject ? "is" : "is not"} sufficient evidence at the ${alpha} level that the ${what} is ${WORD[dir]} ${mu0} ${unit}.`
       ],
       figure: RRPlot.svg({ dist: "t", df, dir, crit: ts, ts: S.round(t, 3), alpha }),
@@ -151,7 +156,7 @@
     const c = isP ? zCrit(alpha, dir) : tCrit(df, alpha, dir);
     const mag = S.round(c + R.pick([-1, 1]) * R.pick([0.12, 0.35, 0.7, 1.1]), 2), sign = dir === "lt" ? -1 : dir === "gt" ? 1 : R.pick([-1, 1]);
     const ts = S.round(sign * Math.max(0.05, mag), 2), reject = IN_RR(ts, dir, c), pp = isP ? zPvPart(ts, dir) : tPvPart(ts, dir, df), pval = isP ? pp.p : pp.exact;
-    if ((pval <= alpha) !== reject || (!isP && pp.b.lo < alpha && alpha < pp.b.hi)) return decide();
+    if ((pval <= alpha) !== reject) return decide();
     const opts = [
       `Reject H₀. There is sufficient evidence that the ${ctx} is ${WORD[dir]} ${v}.`,
       `Fail to reject H₀. There is not sufficient evidence that the ${ctx} is ${WORD[dir]} ${v}.`,
@@ -168,10 +173,10 @@
           why: { [1 - ans]: `Rejection region: ${RULE(dir, c.toFixed(3))}. The test statistic ${ts} is ${reject ? "in" : "not in"} it.`, 2: "A test never proves anything; it measures the strength of evidence.", 3: "We never 'accept' H₀. Not finding evidence against it is not proof that it is true." } },
         pp.part,
         { type: "choice", method: "pv", label: "Decision and conclusion", options: opts, answer: ans,
-          why: { [1 - ans]: `p-value ${isP ? "= " + P4(pp.p) : ": " + BR(pp.b)} is ${reject ? "at most" : "greater than"} \\(\\alpha = ${alpha}\\).`, 2: "A test never proves anything; it measures the strength of evidence.", 3: "We never 'accept' H₀. Not finding evidence against it is not proof that it is true." } }],
+          why: { [1 - ans]: `p-value = ${P4(isP ? pp.p : pp.exact)} is ${reject ? "at most" : "greater than"} \\(\\alpha = ${alpha}\\).`, 2: "A test never proves anything; it measures the strength of evidence.", 3: "We never 'accept' H₀. Not finding evidence against it is not proof that it is true." } }],
       hand: [`Critical value: ${isP ? "\\(z^*\\) row" : `row \\(df = ${S.tTableRow(df)}\\)${S.tTableRow(df) !== df ? " (next smaller listed df)" : ""}`}, ${COL(alpha, dir)}, so ${isP ? "\\(z^*\\)" : "\\(t^*\\)"} \\(= ${c.toFixed(3)}\\). Reject \\(H_0\\) if ${RULE(dir, c.toFixed(3))}.`,
         `The test statistic ${ts} is ${reject ? "" : "not "}in the rejection region, so ${reject ? "reject" : "fail to reject"} \\(H_0\\).`,
-        `<strong>p-value method:</strong> p-value = ${PFORM(dir, isP ? "Z" : "T", ts)}${isP ? ` = ${P4(pp.p)} (normal table, left area ${pp.left.toFixed(4)})` : `: in row \\(df = ${pp.b.row}\\), ${BR(pp.b)}; exactly ${P4(pp.exact)}`}. It is ${reject ? "at most" : "greater than"} \\(\\alpha = ${alpha}\\): the same decision.`,
+        `<strong>p-value method:</strong> p-value = ${PFORM(dir, isP ? "Z" : "T", ts)}${isP ? ` = ${P4(pp.p)} (normal table, left area ${pp.left.toFixed(4)})` : ` = ${P4(pp.exact)} (${HOW_T(dir, ts, df)})`}. It is ${reject ? "at most" : "greater than"} \\(\\alpha = ${alpha}\\): the same decision.`,
         "State the conclusion about \\(H_a\\), in context, without claiming proof."],
       figure: RRPlot.svg({ dist: isP ? "z" : "t", df, dir, crit: c, ts, alpha })
     };
@@ -184,7 +189,7 @@
     const sign = dir === "lt" ? -1 : dir === "gt" ? 1 : R.pick([-1, 1]), ts = S.round(sign * R.int(isP ? 30 : 40, isP ? 330 : 420) / 100, isP ? 2 : 3);
     const T = isP ? "Z" : "T", c = isP ? zCrit(alpha, dir) : tCrit(df, alpha, dir), reject = IN_RR(ts, dir, c);
     const pp = isP ? zPvPart(ts, dir) : tPvPart(ts, dir, df), pval = isP ? pp.p : pp.exact;
-    if ((pval <= alpha) !== reject || (!isP && pp.b.lo < alpha && alpha < pp.b.hi)) return pvalue();
+    if ((pval <= alpha) !== reject) return pvalue();
     const sym = isP ? "p" : "\\mu", tsS = String(ts).replace("-", "−");
     const areas = [`${PFORM("gt", T, ts)}, the area to the right of TS`, `${PFORM("lt", T, ts)}, the area to the left of TS`, `${PFORM("ne", T, ts)}, both tails`];
     const ans = ["gt", "lt", "ne"].indexOf(dir);
@@ -195,12 +200,12 @@
         { type: "choice", label: "Which area is the p-value?", options: areas, answer: ans, fixed: true,
           why: Object.fromEntries([0, 1, 2].filter(i => i !== ans).map(i => [i, i === 2 ? "Only a two-sided \\(H_a\\) (≠) uses both tails." : dir === "ne" ? "\\(H_a\\) is ≠, so the p-value counts both tails: double one tail." : `The p-value follows the direction of \\(H_a\\): ${dir === "gt" ? "> means the area to the right" : "< means the area to the left"}.`])) },
         pp.part,
-        DEC(undefined, reject, alpha, `p-value ${isP ? "= " + P4(pp.p) : ": " + BR(pp.b)} is ${reject ? "at most" : "greater than"} \\(\\alpha = ${alpha}\\).`)
+        DEC(undefined, reject, alpha, `p-value = ${P4(isP ? pp.p : pp.exact)} is ${reject ? "at most" : "greater than"} \\(\\alpha = ${alpha}\\).`)
       ],
       hand: [
         `\\(H_a\\) has ${dir === "gt" ? ">" : dir === "lt" ? "<" : "≠"}, so p-value = ${PFORM(dir, T, ts)}${dir === "ne" ? ": double the tail beyond |TS|" : ""}.`,
         isP ? `Normal table: the left area at \\(z = ${pp.zr.toFixed(2)}\\) is ${pp.left.toFixed(4)}, so p-value = ${dir === "gt" ? `1 − ${pp.left.toFixed(4)} = ` : dir === "ne" ? `2 × ${Math.min(pp.left, 1 - pp.left).toFixed(4)} = ` : ""}${P4(pp.p)}.`
-          : `t-table, row \\(df = ${pp.b.row}\\)${pp.b.row !== df ? ` (${df} is not listed, so the next smaller row)` : ""}: ${S.fmt(Math.abs(ts), 3)} falls between the table values for the column areas that give ${BR(pp.b)}${dir === "ne" ? " after doubling" : ""}. Exactly (tcdf or T.DIST), p-value = ${P4(pp.exact)}.`,
+          : `With \\(df = ${df}\\): ${HOW_T(dir, ts, df)}. p-value = ${P4(pp.exact)}.`,
         `p-value ${reject ? "≤" : ">"} \\(\\alpha = ${alpha}\\), so ${reject ? "reject" : "fail to reject"} \\(H_0\\). The critical-value method agrees: ${isP ? "\\(z^*\\)" : "\\(t^*\\)"} = ${c.toFixed(3)}, and TS is ${reject ? "" : "not "}in the rejection region.`
       ],
       figure: RRPlot.svg({ dist: isP ? "z" : "t", df: isP ? null : df, dir, crit: c, ts, alpha, mode: "pv" }),

@@ -221,7 +221,7 @@
     const formula = o.dir === 'gt' ? `P(${T} ≥ ${ts})` : o.dir === 'lt' ? `P(${T} ≤ ${ts})` : `2P(${T} ≥ ${a})`;
     let how;
     if (o.dist === 'z') { const r2 = minus((Math.round(o.ts * 100) / 100).toFixed(2)), a2 = (Math.round(Math.abs(o.ts) * 100) / 100).toFixed(2); how = Math.abs(o.ts) > 3.49 ? `|TS| is beyond the normal table (±3.49), so the tail area is essentially 0.` : `From the normal table (z rounded to ${o.dir === 'ne' ? a2 : r2}): ${o.dir === 'gt' ? `1 − (left area at ${r2})` : o.dir === 'lt' ? `the left area at ${r2}` : `2 × (1 − left area at ${a2})`}.`; }
-    else { const b = bracket(o); how = `The t-table (row df = ${b.row}) only brackets it: ${b.lo === 0 ? `p-value < ${b.hi}` : b.hi >= 1 && b.lo >= 0.5 ? `p-value > ${b.lo}` : `${b.lo} < p-value < ${b.hi}`}. tcdf on the TI or T.DIST in Excel gives the exact value.`; }
+    else { const tt = tsText(o.ts), aa = tsText(Math.abs(o.ts)); how = `With df = ${o.df}, use ${o.dir === 'gt' ? `tcdf(${tt}, 1E99, ${o.df})` : o.dir === 'lt' ? `tcdf(−1E99, ${tt}, ${o.df})` : `2*tcdf(${aa}, 1E99, ${o.df})`} on the TI-84, or ${o.dir === 'gt' ? `T.DIST.RT(${tt}, ${o.df})` : o.dir === 'lt' ? `T.DIST(${tt}, ${o.df}, TRUE)` : `T.DIST.2T(${aa}, ${o.df})`} in Excel.`; }
     return [
       `Assume H₀ is true. Then the test statistic follows ${o.dist === 't' ? 'the t distribution with df = ' + o.df : 'the standard normal Z'}.`,
       `Compute the test statistic: TS = ${ts}.`,

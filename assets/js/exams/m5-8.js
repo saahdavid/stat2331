@@ -402,18 +402,13 @@
   });
   B.MC(8, 'm8-pvt', () => {
     const k = R.pick([8, 11, 13, 16, 21, 26, 31]), df = k - 1, side = R.pick(['>', '<', '\\ne']), dir = side === '>' ? 'gt' : side === '<' ? 'lt' : 'ne';
-    let t, b; do { t = S.round((side === '<' ? -1 : side === '>' ? 1 : R.pick([-1, 1])) * R.step(0.8, 3.6, 0.001), 3); b = tbr(t, dir, df); } while (b.lo <= 0 || b.hi >= 0.25 * (dir === 'ne' ? 2 : 1) - 1e-9);
-    const two = dir === 'ne', half = { lo: b.lo / 2, hi: b.hi / 2 }, dbl = { lo: b.lo * 2, hi: b.hi * 2 };
-    const fmt = x => `between ${n(x.lo)} and ${n(x.hi)}`;
-    const wrongRow = tbr(t, dir, k);  // using df = n
-    const options = [
-      o(fmt(b), 4, `Correct: row df = ${b.row}${b.row !== df ? ` (${df} is not listed, so the next smaller row)` : ''}; |t| = ${n(Math.abs(t), 3)} falls between the table values for those ${two ? 'column areas, doubled for a two-sided test' : 'column areas'}. Exactly, p-value = ${P4(tpx(t, dir, df))}.`),
-      o(fmt(two ? half : dbl), 2, two ? 'Those are the one-tail areas. A two-sided p-value doubles them.' : 'One-sided: do not double the column areas.'),
-      (() => { const f = two ? 2 : 1, TT = [0.25, 0.2, 0.15, 0.1, 0.05, 0.025, 0.02, 0.01, 0.005, 0.0025, 0.001, 0.0005].map(x => S.round(x * f, 6)), j = TT.findIndex(x => Math.abs(x - b.hi) < 1e-9), useRow = S.tTableRow(k) !== b.row && (wrongRow.lo !== b.lo || wrongRow.hi !== b.hi);
-        return useRow ? o(fmt(wrongRow), 1, 'That uses row df = n. Use df = n − 1.') : o(fmt({ lo: TT[j], hi: TT[j - 1] }), 1, `Off by one column: in row df = ${b.row}, |t| = ${n(Math.abs(t), 3)} is beyond the table value for ${n(TT[j] / f)}${two ? ' (one tail)' : ''}, so the p-value is below ${n(b.hi)}.`); })(),
-      o(`between ${n(1 - b.hi)} and ${n(1 - b.lo)}`, 0, 'Those are areas on the other side of the test statistic; the p-value is the tail beyond it.')];
-    if (new Set(options.map(x => x.t)).size < 4) return B.mc[8].find(x => x.id === 'm8-pvt').gen();
-    return { stem: `A t test of \\(H_a: \\mu ${side} \\mu_0\\) uses a sample of \\(n = ${k}\\) and gives \\(t = ${tx(t, 3)}\\). From the t-table, the p-value is…`, options };
+    const t = S.round((side === '<' ? -1 : side === '>' ? 1 : R.pick([-1, 1])) * R.step(0.6, 3.2, 0.01), 2), p = tpx(t, dir, df), one = tpx(Math.abs(t), 'gt', df);
+    const cmd = dir === 'gt' ? `tcdf(${n(t, 2)}, 1E99, ${df})` : dir === 'lt' ? `tcdf(-1E99, ${n(t, 2)}, ${df})` : `2*tcdf(${n(Math.abs(t), 2)}, 1E99, ${df})`;
+    const opts = [[p, 4, `Correct: df = ${k} − 1 = ${df}, and ${cmd} = ${n(p, 4)}${dir === 'ne' ? ' (both tails)' : ''}.`]];
+    opts.push(dir === 'ne' ? [one, 2, 'That is one tail. Hₐ is ≠, so the p-value doubles it.'] : [Math.min(1, 2 * p), 2, 'One-sided: do not double the tail area.']);
+    { const wd = tpx(t, dir, k), wz = zp(t, dir); opts.push(Math.abs(wd - p) >= 0.0005 ? [wd, 1, `That uses df = n = ${k}. Use df = n − 1 = ${df}.`] : [wz, 1, 'That is the normal (z) area. For a mean, use the t distribution with df = n − 1.']); }
+    opts.push([dir === 'ne' ? 1 - p : 1 - p, 0, dir === 'gt' ? 'That is the area to the left of t; Hₐ has >, so take the area to the right.' : dir === 'lt' ? 'That is the area to the right of t; Hₐ has <, so take the area to the left.' : 'That is the area between the tails, not beyond them.']);
+    return { stem: `A t test of \\(H_a: \\mu ${side} \\mu_0\\) uses a sample of \\(n = ${k}\\) and gives \\(t = ${tx(t, 2)}\\). What is the exact p-value (tcdf on the TI-84 or T.DIST in Excel)?`, numeric: true, options: nums(opts, 4, v => n(v, 4)) };
   });
   B.MC(8, 'm8-practical', () => ({ stem: R.pick(['A study of 50,000 adults finds a new diet lowers weight by an average of 0.2 pound, and the test statistic falls far into the rejection region. Which statement is best?', 'With 80,000 students, an app raises test scores by 0.3 point out of 100, and the test statistic falls in the rejection region at α = 0.01. Which statement is best?']), options: [
     o('The result is statistically significant but may not be practically important.', 4, 'Correct: huge samples detect tiny effects.'),
@@ -445,8 +440,8 @@
   B.FR(8, 'm8-ttest', () => {
     const k = R.pick([9, 12, 15, 16, 20, 25]), mu0 = R.int(40, 80), s = S.round(R.step(4, 12, 0.1), 1), df = k - 1, a = R.pick([0.05, 0.01, 0.10]);
     const xb = S.round(mu0 - R.step(0.4, 1.0, 0.05) * s * 2.6 / Math.sqrt(k), 1), se = s / Math.sqrt(k), t = (xb - mu0) / se;
-    const row = S.tTableRow(df), c = tc(df, a, false), rej = t <= -c, px = tpx(t, 'lt', df), br = tbr(t, 'lt', df);
-    if ((px <= a) !== rej || (br.lo < a && a < br.hi)) return B.fr[8].find(f => f.id === 'm8-ttest').gen();
+    const row = S.tTableRow(df), c = tc(df, a, false), rej = t <= -c, px = tpx(t, 'lt', df);
+    if ((px <= a) !== rej) return B.fr[8].find(f => f.id === 'm8-ttest').gen();
     const ctx = R.pick([['mean battery life', 'hours'], ['mean fill weight', 'grams'], ['mean delivery time', 'minutes']]);
     return {
       stem: `A company claims the ${ctx[0]} is ${mu0} ${ctx[1]}. A consumer group suspects it is less. A random sample of ${k} gives \\(\\bar x = ${tx(xb, 1)}\\) and \\(s = ${tx(s, 1)}\\). The data show no strong skew. Test at \\(\\alpha = ${a}\\).`,
@@ -455,11 +450,11 @@
         { type: 'num', label: 'Test statistic \\(t\\)', answer: t, tol: 0.006, mistakes: [{ value: -t, msg: 't = (x̄ − μ₀)/SE; keep the sign.' }] },
         { type: 'num', label: 'Degrees of freedom', answer: df, mistakes: [{ value: k, msg: 'df = n − 1.' }] },
         { type: 'num', method: 'cv', label: 'Critical value \\(t^*\\) from the t-table', answer: c, tol: 0.0015, mistakes: [{ value: tc(df, a, true), msg: 'Hₐ is one-sided: use column α, not α/2.' }, { value: zc(a, false), msg: 'That is z*; use the t row for df = n − 1.' }] },
-        { type: 'pint', method: 'pv', label: 'p-value: between which two t-table areas? (or the exact value)', lo: br.lo, hi: br.hi, exact: px, mistakes: br.hi * 2 <= 1 ? [{ lo: br.lo * 2, hi: br.hi * 2, msg: 'One-sided: do not double the column areas.' }] : [] }],
+        { type: 'num', method: 'pv', label: `p-value (exact, 4 decimals: tcdf on the TI-84 or T.DIST in Excel, df = ${df})`, answer: px, tol: 0.0006, show: P4(px), mistakes: [{ value: Math.min(1, 2 * px), tol: 0.0006, msg: 'One-sided: do not double the tail area.' }, { value: 1 - px, tol: 0.0006, msg: 'That is the area to the right. Hₐ has <, so the p-value is the area to the left of t.' }] }],
       written: { prompt: 'Using the critical value or the p-value (your choice), state your decision and your conclusion in context.',
-        keys: [`Decides correctly with either method: TS = ${n(t, 3)} is ${rej ? 'in' : 'not in'} the rejection region TS ≤ −${n(c, 3)}, or the p-value (${BRK(br)}) is ${rej ? 'at most' : 'greater than'} α = ${a}; so ${rej ? 'reject' : 'fail to reject'} H₀.`, `Concludes in context about Hₐ: there ${rej ? 'is' : 'is not'} sufficient evidence that the ${ctx[0]} is less than ${mu0} ${ctx[1]}.`],
-        model: `Critical value: reject H₀ if TS ≤ −${n(c, 3)}; TS = ${n(t, 3)} is ${rej ? '' : 'not '}in the rejection region. (Or: from the t-table, ${BRK(br)}, exactly ${P4(px)}, which is ${rej ? 'at most' : 'greater than'} ${a}.) So we ${rej ? 'reject' : 'fail to reject'} H₀. There ${rej ? 'is' : 'is not'} sufficient evidence at the ${a} level that the ${ctx[0]} is less than ${mu0} ${ctx[1]}.` },
-      solution: [`\\(H_0: \\mu = ${mu0}\\), \\(H_a: \\mu < ${mu0}\\).`, `SE = \\(${tx(s, 1)}/\\sqrt{${k}} = ${tx(se)}\\).`, `\\(t = (${tx(xb, 1)} - ${mu0})/${tx(se)} = ${tx(t, 3)}\\), df = ${df}.`, `<strong>Critical value:</strong> lower-tailed, \\(\\alpha = ${a}\\): row df = ${row}, column ${a}, so \\(t^* = ${tx(c, 3)}\\). Reject if TS ≤ −${n(c, 3)}; ${n(t, 3)} ${rej ? '≤' : '>'} −${n(c, 3)}.`, `<strong>p-value:</strong> \\(P(T \\le ${tx(t, 3)})\\). In row df = ${br.row}, ${n(Math.abs(t), 3)} falls between the table values for ${BRK(br)}; exactly ${P4(px)}. It is ${rej ? 'at most' : 'greater than'} \\(\\alpha = ${a}\\).`, `Either way: ${rej ? 'reject' : 'fail to reject'} H₀.`],
+        keys: [`Decides correctly with either method: TS = ${n(t, 3)} is ${rej ? 'in' : 'not in'} the rejection region TS ≤ −${n(c, 3)}, or the p-value ${P4(px)} is ${rej ? 'at most' : 'greater than'} α = ${a}; so ${rej ? 'reject' : 'fail to reject'} H₀.`, `Concludes in context about Hₐ: there ${rej ? 'is' : 'is not'} sufficient evidence that the ${ctx[0]} is less than ${mu0} ${ctx[1]}.`],
+        model: `Critical value: reject H₀ if TS ≤ −${n(c, 3)}; TS = ${n(t, 3)} is ${rej ? '' : 'not '}in the rejection region. (Or: p-value = ${P4(px)}, from tcdf(-1E99, ${n(t, 3)}, ${df}) or =T.DIST(${n(t, 3)},${df},TRUE), which is ${rej ? 'at most' : 'greater than'} ${a}.) So we ${rej ? 'reject' : 'fail to reject'} H₀. There ${rej ? 'is' : 'is not'} sufficient evidence at the ${a} level that the ${ctx[0]} is less than ${mu0} ${ctx[1]}.` },
+      solution: [`\\(H_0: \\mu = ${mu0}\\), \\(H_a: \\mu < ${mu0}\\).`, `SE = \\(${tx(s, 1)}/\\sqrt{${k}} = ${tx(se)}\\).`, `\\(t = (${tx(xb, 1)} - ${mu0})/${tx(se)} = ${tx(t, 3)}\\), df = ${df}.`, `<strong>Critical value:</strong> lower-tailed, \\(\\alpha = ${a}\\): row df = ${row}, column ${a}, so \\(t^* = ${tx(c, 3)}\\). Reject if TS ≤ −${n(c, 3)}; ${n(t, 3)} ${rej ? '≤' : '>'} −${n(c, 3)}.`, `<strong>p-value:</strong> \\(P(T \\le ${tx(t, 3)})\\). With df = ${df}: tcdf(-1E99, ${n(t, 3)}, ${df}) on the TI-84, or =T.DIST(${n(t, 3)},${df},TRUE) in Excel, gives ${P4(px)}. It is ${rej ? 'at most' : 'greater than'} \\(\\alpha = ${a}\\).`, `Either way: ${rej ? 'reject' : 'fail to reject'} H₀.`],
       figure: root.RRPlot ? root.RRPlot.svg({ dist: 't', df, dir: 'lt', crit: c, ts: S.round(t, 3), alpha: a }) : '',
       ti: `STAT ▸ TESTS ▸ 2:T-Test (Stats): μ0=${mu0}, x̄=${n(xb, 1)}, Sx=${n(s, 1)}, n=${k}, μ<μ0 (reports t). invT(${n(a)},${df}) = −${n(c, 3)}; tcdf(-1E99,${n(t, 3)},${df}) = ${P4(px)}.`, excel: `=T.INV(${n(a)},${df}) gives −t*; =T.DIST(${n(t, 3)},${df},TRUE) gives the p-value`
     };
