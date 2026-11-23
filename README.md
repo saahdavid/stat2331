@@ -140,7 +140,7 @@ tests/                         Numerical, generator, and browser checks
 
 1. Edit the appropriate `src/module-N.html` fragment. Use a section with `<h2 id="unique-id">Heading</h2>`; the sidebar TOC is generated from those headings.
 2. Put TeX in `<span class="math">...</span>` and display formulas inside `<div class="formula">...</div>`. KaTeX is loaded from a CDN. Use HTML entities such as `&lt;` for comparison signs in HTML source.
-3. Each page loads only the scripts it needs; the lists are in `scriptsFor()` in `scripts/build.mjs`. Rebuild the checked-in pages with **`node scripts/build.mjs`** (or `npm run build`). This uses only Node built-ins; no dependency installation is needed. Rebuilding is only an authoring convenience, not a student runtime requirement.
+3. The build adds a content hash to every script and stylesheet link (`?v=…`), so browsers fetch the new file after each update instead of a cached old one. Each page loads only the scripts it needs; the lists are in `scriptsFor()` in `scripts/build.mjs`. Rebuild the checked-in pages with **`node scripts/build.mjs`** (or `npm run build`). This uses only Node built-ins; no dependency installation is needed. Rebuilding is only an authoring convenience, not a student runtime requirement.
 4. Review locally with `python3 -m http.server 2331 --bind 127.0.0.1`, then visit `http://127.0.0.1:2331`.
 5. Commit the fragments **and** regenerated HTML.
 

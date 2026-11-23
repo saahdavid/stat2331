@@ -52,4 +52,11 @@ await writeFile(path.join(root,'exams.html'),shell('Practice exams','<section id
 const labs=[['resistance',1,'Resistant or not?'],['regression',2,'Least squares by hand and by eye'],['randomize',3,'Why we randomize'],['lln',4,'Law of Large Numbers'],['binomial',5,'Building a binomial distribution'],['phat',6,'Sampling distribution of p̂'],['clt',6,'Sample means and the CLT'],['confidence',7,'What “95% confident” means'],['pvalue',8,'What the p-value really is'],['rejection',8,'Where the rejection region comes from'],['power',8,'Type I error and power']];
 await writeFile(path.join(root,'labs.html'),shell('Animated labs',`<div class="page-intro"><div class="eyebrow">The statistics laboratory</div><h1>See it. Sample it.<br>Make it make sense.</h1><p>Use Take 1 to follow each step. Then repeat and watch a pattern emerge. Each lab puts the simulation beside the theory.</p></div><nav class="lab-index" aria-label="Choose a lab">${labs.map(([id,m,title])=>`<a href="#lab-${id}"><small>MODULE ${m}</small>${title} →</a>`).join('')}</nav>${labs.map(([id])=>`<div data-lab="${id}" id="lab-${id}"></div>`).join('')}`,'labs'));
 const tableContent=await readFile(path.join(root,'src/tables.html'),'utf8');await writeFile(path.join(root,'tables.html'),shell('Tables & formulas',tableContent,'tables'));
+// Cache busting: every page asks for its scripts and stylesheet with a content hash (?v=…),
+// so a student's browser never mixes a new page with an old cached script after an update.
+{const fs=await import('node:fs'),crypto=await import('node:crypto');const hash={};
+ const v=rel=>hash[rel]||(hash[rel]=crypto.createHash('md5').update(fs.readFileSync(path.join(root,rel))).digest('hex').slice(0,10));
+ for(const f of fs.readdirSync(root).filter(f=>f.endsWith('.html'))){const file=path.join(root,f),html=fs.readFileSync(file,'utf8');
+  const out=html.replace(/(src|href)="(assets\/(?:js|css)\/[^"?]+\.(?:js|css))(?:\?v=[0-9a-f]+)?"/g,(m,attr,rel)=>fs.existsSync(path.join(root,rel))?`${attr}="${rel}?v=${v(rel)}"`:m);
+  if(out!==html)fs.writeFileSync(file,out);}}
 console.log(`Built ${(await import('node:fs')).readdirSync(root).filter(f=>f.endsWith('.html')).length} static pages. Ready to serve from the repository root.`);
